@@ -14,7 +14,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 200 50% 15%;
 
-    --primary: 180 100% 25%;
+    --primary: 180 100% 35%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 210 40% 96.1%;
@@ -23,7 +23,7 @@
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 180 65% 75%;
+    --accent: 180 65% 80%;
     --accent-foreground: 200 50% 15%;
 
     --destructive: 0 84.2% 60.2%;
@@ -31,7 +31,7 @@
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 180 100% 25%;
+    --ring: 180 100% 35%;
 
     --radius: 0.75rem;
   }
@@ -46,7 +46,7 @@
     --popover: 200 50% 3%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 180 100% 25%;
+    --primary: 180 100% 35%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 217.2 32.6% 17.5%;
@@ -55,7 +55,7 @@
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 180 65% 75%;
+    --accent: 180 65% 80%;
     --accent-foreground: 200 50% 15%;
 
     --destructive: 0 62.8% 30.6%;
@@ -63,7 +63,7 @@
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 180 100% 25%;
+    --ring: 180 100% 35%;
   }
 }
 
@@ -75,19 +75,84 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: linear-gradient(135deg, #f0fdfa 0%, #e6fffa 50%, #f0f9ff 100%);
+    min-height: 100vh;
   }
 }
 
 @layer components {
   .dental-gradient {
-    background: linear-gradient(135deg, #008080 0%, #00B2A9 50%, #4ED4D4 100%);
+    background: linear-gradient(135deg, #0d9488 0%, #14b8a6 30%, #06b6d4 70%, #0ea5e9 100%);
   }
   
   .dental-card {
-    @apply bg-white rounded-xl shadow-lg border border-teal-100 p-6;
+    @apply bg-white rounded-xl shadow-lg border-2 border-teal-100/80 p-6;
+    background: linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%);
+    box-shadow: 0 10px 25px -5px rgba(20, 184, 166, 0.1), 0 4px 6px -2px rgba(20, 184, 166, 0.05);
   }
   
   .dental-input {
-    @apply w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200;
+    @apply w-full px-4 py-3 border-2 border-teal-200 rounded-lg focus:border-teal-500 focus:ring-2 focus:ring-teal-200 transition-all duration-200 bg-white;
+  }
+
+  .dental-button-primary {
+    @apply bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-medium py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200;
+  }
+
+  .dental-button-secondary {
+    @apply bg-white border-2 border-teal-300 text-teal-700 hover:bg-teal-50 hover:border-teal-400 font-medium py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-200;
+  }
+
+  .dental-header {
+    @apply bg-white shadow-lg border-b-2 border-teal-100;
+    background: linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%);
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  .animate-progress {
+    animation: progress 2s ease-in-out infinite;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes progress {
+    0% {
+      width: 0%;
+    }
+    50% {
+      width: 70%;
+    }
+    100% {
+      width: 100%;
+    }
   }
 }

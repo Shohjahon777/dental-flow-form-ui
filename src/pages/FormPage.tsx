@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,7 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, MessageCircle, FileText, Save, Send } from 'lucide-react';
+import { AIDentalPatient } from '@/components/ui/ai-dental-patient';
+import { ArrowLeft, FileText, Save, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const FormPage = () => {
@@ -163,7 +163,6 @@ const FormPage = () => {
         description: "Moving to Paper 2 - Dental History.",
       });
     } else {
-      // Save final form data
       localStorage.setItem(`dentalApp_form_${patientId}`, JSON.stringify(formData));
       localStorage.setItem(`dentalApp_submitted_${patientId}`, 'true');
       
@@ -206,8 +205,12 @@ const FormPage = () => {
           >
             {question.options.map((option: string) => (
               <div key={option} className="flex items-center space-x-2">
-                <RadioGroupItem value={option} id={`${question.id}_${option}`} />
-                <Label htmlFor={`${question.id}_${option}`} className="text-sm font-normal">
+                <RadioGroupItem 
+                  value={option} 
+                  id={`${question.id}_${option}`}
+                  className="border-teal-300 text-teal-600 focus:ring-teal-500"
+                />
+                <Label htmlFor={`${question.id}_${option}`} className="text-sm font-normal cursor-pointer hover:text-teal-700">
                   {option}
                 </Label>
               </div>
@@ -219,7 +222,6 @@ const FormPage = () => {
     }
   };
 
-  // Group questions by section
   const groupedQuestions = currentQuestions.reduce((acc, question) => {
     if (!acc[question.section]) {
       acc[question.section] = [];
@@ -229,9 +231,9 @@ const FormPage = () => {
   }, {} as Record<string, any[]>);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+      <header className="dental-header">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
@@ -239,7 +241,7 @@ const FormPage = () => {
                 variant="ghost" 
                 size="sm" 
                 onClick={() => navigate('/patients')}
-                className="text-gray-600 hover:text-gray-800"
+                className="text-gray-600 hover:text-teal-700 hover:bg-teal-50"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Patient Selection
@@ -253,7 +255,7 @@ const FormPage = () => {
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">{user?.name}</span>
-              <Button variant="outline" size="sm" onClick={logout}>
+              <Button variant="outline" size="sm" onClick={logout} className="hover:bg-teal-50">
                 Logout
               </Button>
             </div>
@@ -263,40 +265,20 @@ const FormPage = () => {
 
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Side - AI Patient Placeholder */}
+          {/* Left Side - AI Patient */}
           <div className="lg:col-span-1">
-            <Card className="dental-card h-fit sticky top-6">
-              <CardHeader className="text-center">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <MessageCircle className="w-8 h-8 text-primary" />
-                </div>
-                <CardTitle className="text-lg">AI Patient Assistant</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center">
-                <div className="bg-gray-50 rounded-lg p-6 mb-4">
-                  <p className="text-gray-600 text-sm mb-4">
-                    The AI patient assistant will be available here to help answer questions and provide additional context during the interview process.
-                  </p>
-                  <div className="text-xs text-gray-500">
-                    🤖 Coming Soon: Interactive AI patient simulation
-                  </div>
-                </div>
-                <Button variant="outline" disabled className="w-full">
-                  Start AI Interaction
-                </Button>
-              </CardContent>
-            </Card>
+            <AIDentalPatient />
           </div>
 
           {/* Right Side - Form */}
           <div className="lg:col-span-2">
             <div className="space-y-6">
               {/* Paper Navigation */}
-              <div className="flex space-x-4 bg-white rounded-lg p-1 shadow-sm">
+              <div className="flex space-x-4 bg-white rounded-lg p-1 shadow-lg border border-teal-100">
                 <Button
                   variant={currentPaper === 'paper1' ? 'default' : 'ghost'}
                   onClick={() => setCurrentPaper('paper1')}
-                  className="flex-1"
+                  className={`flex-1 ${currentPaper === 'paper1' ? 'dental-button-primary' : 'hover:bg-teal-50'}`}
                 >
                   <FileText className="w-4 h-4 mr-2" />
                   Paper 1: Medical History
@@ -304,7 +286,7 @@ const FormPage = () => {
                 <Button
                   variant={currentPaper === 'paper2' ? 'default' : 'ghost'}
                   onClick={() => setCurrentPaper('paper2')}
-                  className="flex-1"
+                  className={`flex-1 ${currentPaper === 'paper2' ? 'dental-button-primary' : 'hover:bg-teal-50'}`}
                 >
                   <FileText className="w-4 h-4 mr-2" />
                   Paper 2: Dental History
@@ -315,7 +297,10 @@ const FormPage = () => {
               {Object.entries(groupedQuestions).map(([section, questions]) => (
                 <Card key={section} className="dental-card">
                   <CardHeader>
-                    <CardTitle className="text-xl text-gray-900">{section}</CardTitle>
+                    <CardTitle className="text-xl text-gray-900 flex items-center">
+                      <div className="w-2 h-8 bg-gradient-to-b from-teal-500 to-cyan-500 rounded-full mr-3"></div>
+                      {section}
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {questions.map((question, index) => (
@@ -326,7 +311,7 @@ const FormPage = () => {
                           </Label>
                           {renderQuestion(question)}
                         </div>
-                        {index < questions.length - 1 && <Separator className="my-4" />}
+                        {index < questions.length - 1 && <Separator className="my-4 bg-teal-100" />}
                       </div>
                     ))}
                   </CardContent>
@@ -334,8 +319,8 @@ const FormPage = () => {
               ))}
 
               {/* Action Buttons */}
-              <div className="flex justify-between items-center bg-white rounded-lg p-4 shadow-sm">
-                <Button variant="outline" onClick={handleSave}>
+              <div className="flex justify-between items-center bg-white rounded-lg p-4 shadow-lg border border-teal-100">
+                <Button variant="outline" onClick={handleSave} className="dental-button-secondary">
                   <Save className="w-4 h-4 mr-2" />
                   Save Progress
                 </Button>
@@ -345,11 +330,12 @@ const FormPage = () => {
                     <Button
                       variant="outline"
                       onClick={() => setCurrentPaper('paper1')}
+                      className="dental-button-secondary"
                     >
                       Previous: Paper 1
                     </Button>
                   )}
-                  <Button onClick={handleSubmit} className="bg-primary hover:bg-primary/90">
+                  <Button onClick={handleSubmit} className="dental-button-primary">
                     <Send className="w-4 h-4 mr-2" />
                     {currentPaper === 'paper1' ? 'Continue to Paper 2' : 'Submit & Review'}
                   </Button>
