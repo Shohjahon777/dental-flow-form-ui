@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -25,12 +26,46 @@ export default {
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',
 				primary: {
-					DEFAULT: 'hsl(var(--primary))',
-					foreground: 'hsl(var(--primary-foreground))'
+					DEFAULT: '#008080',
+					foreground: '#FFFFFF',
+					50: '#E0FFFF',
+					100: '#4ED4D4',
+					200: '#00B2A9',
+					300: '#008080',
+					400: '#006666',
+					500: '#004D4D',
+					600: '#003333',
+					700: '#001A1A',
+					800: '#000000',
+					900: '#000000'
 				},
 				secondary: {
-					DEFAULT: 'hsl(var(--secondary))',
-					foreground: 'hsl(var(--secondary-foreground))'
+					DEFAULT: '#2C3E50',
+					foreground: '#FFFFFF',
+					50: '#E8EAED',
+					100: '#BDC3C7',
+					200: '#95A5A6',
+					300: '#7F8C8D',
+					400: '#566573',
+					500: '#2C3E50',
+					600: '#273746',
+					700: '#212F3D',
+					800: '#1B2631',
+					900: '#17202A'
+				},
+				accent: {
+					DEFAULT: '#4ED4D4',
+					foreground: '#2C3E50'
+				},
+				teal: {
+					50: '#E0FFFF',
+					100: '#4ED4D4',
+					200: '#00B2A9',
+					300: '#008080',
+					400: '#006666',
+					500: '#004D4D',
+					600: '#003333',
+					700: '#001A1A'
 				},
 				destructive: {
 					DEFAULT: 'hsl(var(--destructive))',
@@ -40,10 +75,6 @@ export default {
 					DEFAULT: 'hsl(var(--muted))',
 					foreground: 'hsl(var(--muted-foreground))'
 				},
-				accent: {
-					DEFAULT: 'hsl(var(--accent))',
-					foreground: 'hsl(var(--accent-foreground))'
-				},
 				popover: {
 					DEFAULT: 'hsl(var(--popover))',
 					foreground: 'hsl(var(--popover-foreground))'
@@ -51,16 +82,6 @@ export default {
 				card: {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
-				},
-				sidebar: {
-					DEFAULT: 'hsl(var(--sidebar-background))',
-					foreground: 'hsl(var(--sidebar-foreground))',
-					primary: 'hsl(var(--sidebar-primary))',
-					'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
-					accent: 'hsl(var(--sidebar-accent))',
-					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
-					border: 'hsl(var(--sidebar-border))',
-					ring: 'hsl(var(--sidebar-ring))'
 				}
 			},
 			borderRadius: {
