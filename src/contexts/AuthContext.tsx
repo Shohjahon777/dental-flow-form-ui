@@ -5,7 +5,7 @@ interface User {
   id: string;
   email: string;
   name: string;
-  role: 'student' | 'instructor';
+  role: 'student' | 'instructor' | 'admin';
 }
 
 interface AuthContextType {
@@ -45,11 +45,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     // Simple demo authentication - in real app, this would be API call
     if (email && password) {
+      let role: 'student' | 'instructor' | 'admin' = 'student';
+      
+      if (email.includes('admin')) {
+        role = 'admin';
+      } else if (email.includes('instructor')) {
+        role = 'instructor';
+      }
+      
       const userData: User = {
         id: Math.random().toString(36).substr(2, 9),
         email,
         name: email.split('@')[0],
-        role: email.includes('instructor') ? 'instructor' : 'student'
+        role
       };
       
       setUser(userData);
