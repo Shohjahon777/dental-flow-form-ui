@@ -12,6 +12,7 @@ import DashboardPage from "./pages/DashboardPage";
 import PatientSelectionPage from "./pages/PatientSelectionPage";
 import FormPage from "./pages/FormPage";
 import ReviewPage from "./pages/ReviewPage";
+import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,11 @@ const App = () => (
             <Route path="/review/:patientId" element={
               <ProtectedRoute>
                 <ReviewPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin" element={
+              <ProtectedRoute>
+                <AdminPage />
               </ProtectedRoute>
             } />
             <Route path="*" element={<NotFound />} />
