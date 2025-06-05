@@ -1,15 +1,14 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { AIDentalPatient } from '@/components/ui/ai-dental-patient';
-import { ArrowLeft, FileText, Save, Send } from 'lucide-react';
+import { FormQuestionRenderer } from '@/components/FormQuestionRenderer';
+import { paper1Questions, paper2Questions, sampleFormData, FormQuestion } from '@/data/formQuestions';
+import { ArrowLeft, FileText, Save, Send, User, Heart } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const FormPage = () => {
@@ -19,206 +18,73 @@ const FormPage = () => {
   const { toast } = useToast();
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [currentPaper, setCurrentPaper] = useState<'paper1' | 'paper2'>('paper1');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const paper1Questions = [
-    {
-      id: 'chief_complaint',
-      type: 'text',
-      question: 'What is your chief complaint or main reason for today\'s visit?',
-      section: 'Chief Complaint'
-    },
-    {
-      id: 'medical_history',
-      type: 'textarea',
-      question: 'Please describe your medical history, including any chronic conditions, surgeries, or hospitalizations:',
-      section: 'Medical History'
-    },
-    {
-      id: 'medications',
-      type: 'textarea',
-      question: 'List all medications, supplements, and vitamins you are currently taking:',
-      section: 'Medical History'
-    },
-    {
-      id: 'allergies',
-      type: 'text',
-      question: 'Do you have any known allergies to medications, foods, or other substances?',
-      section: 'Medical History'
-    },
-    {
-      id: 'heart_problems',
-      type: 'radio',
-      question: 'Do you have or have you ever had heart problems, heart attack, chest pains, or stroke?',
-      section: 'Medical History',
-      options: ['Yes', 'No']
-    },
-    {
-      id: 'blood_pressure',
-      type: 'radio',
-      question: 'Do you have high or low blood pressure?',
-      section: 'Medical History',
-      options: ['Yes', 'No']
-    },
-    {
-      id: 'diabetes',
-      type: 'radio',
-      question: 'Do you have diabetes?',
-      section: 'Medical History',
-      options: ['Yes', 'No']
-    },
-    {
-      id: 'pregnancy',
-      type: 'radio',
-      question: 'Are you pregnant or nursing?',
-      section: 'Medical History',
-      options: ['Yes', 'No', 'N/A']
-    }
-  ];
-
-  const paper2Questions = [
-    {
-      id: 'previous_dentist',
-      type: 'text',
-      question: 'Who was your previous dentist and when was your last visit?',
-      section: 'Dental History'
-    },
-    {
-      id: 'dental_complaint',
-      type: 'textarea',
-      question: 'What specific dental problems are you experiencing?',
-      section: 'Dental History'
-    },
-    {
-      id: 'teeth_cleaning',
-      type: 'radio',
-      question: 'How often do you have your teeth cleaned?',
-      section: 'Dental History',
-      options: ['Every 6 months', 'Once a year', 'Less than once a year', 'Never']
-    },
-    {
-      id: 'gum_bleeding',
-      type: 'radio',
-      question: 'Do your gums bleed when you brush or floss?',
-      section: 'Dental History',
-      options: ['Yes', 'No']
-    },
-    {
-      id: 'jaw_pain',
-      type: 'radio',
-      question: 'Do you experience jaw pain or clicking when opening/closing your mouth?',
-      section: 'Dental History',
-      options: ['Yes', 'No']
-    },
-    {
-      id: 'teeth_grinding',
-      type: 'radio',
-      question: 'Do you grind or clench your teeth?',
-      section: 'Dental History',
-      options: ['Yes', 'No', 'Don\'t know']
-    },
-    {
-      id: 'oral_hygiene',
-      type: 'textarea',
-      question: 'Describe your daily oral hygiene routine:',
-      section: 'Dental History'
-    },
-    {
-      id: 'tobacco_use',
-      type: 'radio',
-      question: 'Do you use tobacco products (cigarettes, cigars, chewing tobacco)?',
-      section: 'Social History',
-      options: ['Yes', 'No', 'Former user']
-    },
-    {
-      id: 'alcohol_use',
-      type: 'radio',
-      question: 'Do you consume alcohol regularly?',
-      section: 'Social History',
-      options: ['Yes', 'No', 'Occasionally']
-    }
-  ];
+  // Load sample data on component mount
+  useEffect(() => {
+    setFormData(sampleFormData);
+  }, []);
 
   const currentQuestions = currentPaper === 'paper1' ? paper1Questions : paper2Questions;
+  const paperTitle = currentPaper === 'paper1' ? 'Dental History' : 'Medical History';
 
-  const handleInputChange = (questionId: string, value: string) => {
+  const handleInputChange = (questionId: string, value: any) => {
     setFormData(prev => ({
       ...prev,
       [questionId]: value
     }));
   };
 
-  const handleSave = () => {
-    localStorage.setItem(`dentalApp_form_${patientId}`, JSON.stringify(formData));
-    toast({
-      title: "Progress saved",
-      description: "Your form data has been saved locally.",
-    });
-  };
-
-  const handleSubmit = () => {
-    if (currentPaper === 'paper1') {
-      setCurrentPaper('paper2');
-      toast({
-        title: "Paper 1 completed",
-        description: "Moving to Paper 2 - Dental History.",
-      });
-    } else {
+  const handleSave = async () => {
+    setIsLoading(true);
+    try {
+      // TODO: Replace with actual API call
       localStorage.setItem(`dentalApp_form_${patientId}`, JSON.stringify(formData));
-      localStorage.setItem(`dentalApp_submitted_${patientId}`, 'true');
       
       toast({
-        title: "Forms submitted successfully!",
-        description: "Proceeding to review Papers 3 & 4.",
+        title: "Progress saved",
+        description: "Your form data has been saved successfully.",
       });
-      
-      navigate(`/review/${patientId}`);
+    } catch (error) {
+      toast({
+        title: "Save failed",
+        description: "There was an error saving your progress. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const renderQuestion = (question: any) => {
-    switch (question.type) {
-      case 'text':
-        return (
-          <Input
-            value={formData[question.id] || ''}
-            onChange={(e) => handleInputChange(question.id, e.target.value)}
-            placeholder="Enter your answer..."
-            className="dental-input"
-          />
-        );
-      case 'textarea':
-        return (
-          <Textarea
-            value={formData[question.id] || ''}
-            onChange={(e) => handleInputChange(question.id, e.target.value)}
-            placeholder="Enter your answer..."
-            rows={3}
-            className="dental-input"
-          />
-        );
-      case 'radio':
-        return (
-          <RadioGroup
-            value={formData[question.id] || ''}
-            onValueChange={(value) => handleInputChange(question.id, value)}
-            className="flex flex-wrap gap-4"
-          >
-            {question.options.map((option: string) => (
-              <div key={option} className="flex items-center space-x-2">
-                <RadioGroupItem 
-                  value={option} 
-                  id={`${question.id}_${option}`}
-                  className="border-teal-300 text-teal-600 focus:ring-teal-500"
-                />
-                <Label htmlFor={`${question.id}_${option}`} className="text-sm font-normal cursor-pointer hover:text-teal-700">
-                  {option}
-                </Label>
-              </div>
-            ))}
-          </RadioGroup>
-        );
-      default:
-        return null;
+  const handleSubmit = async () => {
+    setIsLoading(true);
+    try {
+      if (currentPaper === 'paper1') {
+        setCurrentPaper('paper2');
+        toast({
+          title: "Paper 1 completed",
+          description: "Moving to Paper 2 - Medical History.",
+        });
+      } else {
+        // TODO: Replace with actual API submission
+        localStorage.setItem(`dentalApp_form_${patientId}`, JSON.stringify(formData));
+        localStorage.setItem(`dentalApp_submitted_${patientId}`, 'true');
+        
+        toast({
+          title: "Forms submitted successfully!",
+          description: "Proceeding to review Clinical Findings & Investigations.",
+        });
+        
+        navigate(`/review/${patientId}`);
+      }
+    } catch (error) {
+      toast({
+        title: "Submission failed",
+        description: "There was an error submitting your forms. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -228,7 +94,20 @@ const FormPage = () => {
     }
     acc[question.section].push(question);
     return acc;
-  }, {} as Record<string, any[]>);
+  }, {} as Record<string, FormQuestion[]>);
+
+  const getCompletionPercentage = () => {
+    const totalQuestions = currentQuestions.length;
+    const answeredQuestions = currentQuestions.filter(q => {
+      const value = formData[q.id];
+      if (q.type === 'yes-no-details') {
+        return value?.answer !== '' && value?.answer !== undefined;
+      }
+      return value !== '' && value !== undefined && value !== null;
+    }).length;
+    
+    return Math.round((answeredQuestions / totalQuestions) * 100);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
@@ -248,10 +127,20 @@ const FormPage = () => {
               </Button>
             </div>
             <div className="text-center">
-              <h1 className="text-lg font-semibold text-gray-900">
-                {currentPaper === 'paper1' ? 'Paper 1: Medical History' : 'Paper 2: Dental History'}
+              <h1 className="text-lg font-semibold text-gray-900 flex items-center justify-center">
+                {currentPaper === 'paper1' ? (
+                  <>
+                    <User className="w-5 h-5 mr-2 text-teal-600" />
+                    Paper 1: {paperTitle}
+                  </>
+                ) : (
+                  <>
+                    <Heart className="w-5 h-5 mr-2 text-teal-600" />
+                    Paper 2: {paperTitle}
+                  </>
+                )}
               </h1>
-              <p className="text-sm text-gray-600">Patient {patientId?.slice(-1)}</p>
+              <p className="text-sm text-gray-600">Patient {patientId?.slice(-1)} • {getCompletionPercentage()}% Complete</p>
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">{user?.name}</span>
@@ -273,29 +162,39 @@ const FormPage = () => {
           {/* Right Side - Form */}
           <div className="lg:col-span-2">
             <div className="space-y-6">
-              {/* Paper Navigation */}
-              <div className="flex space-x-4 bg-white rounded-lg p-1 shadow-lg border border-teal-100">
-                <Button
-                  variant={currentPaper === 'paper1' ? 'default' : 'ghost'}
-                  onClick={() => setCurrentPaper('paper1')}
-                  className={`flex-1 ${currentPaper === 'paper1' ? 'dental-button-primary' : 'hover:bg-teal-50'}`}
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Paper 1: Medical History
-                </Button>
-                <Button
-                  variant={currentPaper === 'paper2' ? 'default' : 'ghost'}
-                  onClick={() => setCurrentPaper('paper2')}
-                  className={`flex-1 ${currentPaper === 'paper2' ? 'dental-button-primary' : 'hover:bg-teal-50'}`}
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Paper 2: Dental History
-                </Button>
+              {/* Paper Navigation with Progress */}
+              <div className="bg-white rounded-lg p-1 shadow-lg border border-teal-100">
+                <div className="flex space-x-4">
+                  <Button
+                    variant={currentPaper === 'paper1' ? 'default' : 'ghost'}
+                    onClick={() => setCurrentPaper('paper1')}
+                    className={`flex-1 ${currentPaper === 'paper1' ? 'dental-button-primary' : 'hover:bg-teal-50'}`}
+                  >
+                    <User className="w-4 h-4 mr-2" />
+                    Paper 1: Dental History
+                  </Button>
+                  <Button
+                    variant={currentPaper === 'paper2' ? 'default' : 'ghost'}
+                    onClick={() => setCurrentPaper('paper2')}
+                    className={`flex-1 ${currentPaper === 'paper2' ? 'dental-button-primary' : 'hover:bg-teal-50'}`}
+                  >
+                    <Heart className="w-4 h-4 mr-2" />
+                    Paper 2: Medical History
+                  </Button>
+                </div>
+                
+                {/* Progress Bar */}
+                <div className="mt-3 bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-gradient-to-r from-teal-500 to-cyan-500 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${getCompletionPercentage()}%` }}
+                  ></div>
+                </div>
               </div>
 
               {/* Form Sections */}
               {Object.entries(groupedQuestions).map(([section, questions]) => (
-                <Card key={section} className="dental-card">
+                <Card key={section} className="dental-card animate-fade-in">
                   <CardHeader>
                     <CardTitle className="text-xl text-gray-900 flex items-center">
                       <div className="w-2 h-8 bg-gradient-to-b from-teal-500 to-cyan-500 rounded-full mr-3"></div>
@@ -305,12 +204,11 @@ const FormPage = () => {
                   <CardContent className="space-y-6">
                     {questions.map((question, index) => (
                       <div key={question.id}>
-                        <div className="space-y-3">
-                          <Label className="text-sm font-medium text-gray-700 leading-relaxed">
-                            {question.question}
-                          </Label>
-                          {renderQuestion(question)}
-                        </div>
+                        <FormQuestionRenderer
+                          question={question}
+                          value={formData[question.id]}
+                          onChange={(value) => handleInputChange(question.id, value)}
+                        />
                         {index < questions.length - 1 && <Separator className="my-4 bg-teal-100" />}
                       </div>
                     ))}
@@ -319,10 +217,15 @@ const FormPage = () => {
               ))}
 
               {/* Action Buttons */}
-              <div className="flex justify-between items-center bg-white rounded-lg p-4 shadow-lg border border-teal-100">
-                <Button variant="outline" onClick={handleSave} className="dental-button-secondary">
+              <div className="flex justify-between items-center bg-white rounded-lg p-4 shadow-lg border border-teal-100 animate-slide-up">
+                <Button 
+                  variant="outline" 
+                  onClick={handleSave} 
+                  disabled={isLoading}
+                  className="dental-button-secondary"
+                >
                   <Save className="w-4 h-4 mr-2" />
-                  Save Progress
+                  {isLoading ? 'Saving...' : 'Save Progress'}
                 </Button>
                 
                 <div className="flex space-x-3">
@@ -331,13 +234,19 @@ const FormPage = () => {
                       variant="outline"
                       onClick={() => setCurrentPaper('paper1')}
                       className="dental-button-secondary"
+                      disabled={isLoading}
                     >
+                      <ArrowLeft className="w-4 h-4 mr-2" />
                       Previous: Paper 1
                     </Button>
                   )}
-                  <Button onClick={handleSubmit} className="dental-button-primary">
+                  <Button 
+                    onClick={handleSubmit} 
+                    disabled={isLoading}
+                    className="dental-button-primary"
+                  >
                     <Send className="w-4 h-4 mr-2" />
-                    {currentPaper === 'paper1' ? 'Continue to Paper 2' : 'Submit & Review'}
+                    {isLoading ? 'Processing...' : currentPaper === 'paper1' ? 'Continue to Paper 2' : 'Submit & Review'}
                   </Button>
                 </div>
               </div>
