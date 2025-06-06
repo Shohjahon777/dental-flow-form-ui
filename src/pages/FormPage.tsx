@@ -266,8 +266,13 @@ const FormPage = () => {
 
       {/* Main Content with Improved Layout */}
       <div className="flex h-[calc(100vh-3rem)] overflow-hidden">
+<<<<<<< Updated upstream
         {/* Center - AI Patient (Prominent Display) */}
         <div className="w-full lg:w-2/5 xl:w-1/3 bg-white border-r border-teal-100 flex items-center justify-center">
+=======
+        {/* Left Side - AI Patient (Fixed) */}
+        <div className="w-full lg:w-1/3 p-3 h-full bg-white border-r border-teal-100 overflow-y-auto">
+>>>>>>> Stashed changes
           <AIDentalPatient />
         </div>
 
