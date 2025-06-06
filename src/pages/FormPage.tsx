@@ -18,7 +18,7 @@ const FormPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [formData, setFormData] = useState<Record<string, any>>({});
-  const [currentPaper, setCurrentPaper] = useState<'paper1' | 'paper2' | 'paper5'>('paper1');
+  const [currentPaper, setCurrentPaper] = useState<'paper1' | 'paper2' | 'paper3' | 'paper4' | 'paper5'>('paper1');
   const [isLoading, setIsLoading] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -31,6 +31,8 @@ const FormPage = () => {
     switch (currentPaper) {
       case 'paper1': return paper1Questions;
       case 'paper2': return paper2Questions;
+      case 'paper3': return [];
+      case 'paper4': return [];
       case 'paper5': return [];
       default: return paper1Questions;
     }
@@ -40,6 +42,8 @@ const FormPage = () => {
   const paperTitle = {
     paper1: 'Dental History',
     paper2: 'Medical History', 
+    paper3: 'Clinical Examination',
+    paper4: 'Investigations',
     paper5: 'Final Diagnosis'
   }[currentPaper];
 
@@ -80,9 +84,21 @@ const FormPage = () => {
           description: "Moving to Paper 2 - Medical History.",
         });
       } else if (currentPaper === 'paper2') {
-        setCurrentPaper('paper5');
+        setCurrentPaper('paper3');
         toast({
           title: "Paper 2 completed",
+          description: "Moving to Paper 3 - Clinical Examination.",
+        });
+      } else if (currentPaper === 'paper3') {
+        setCurrentPaper('paper4');
+        toast({
+          title: "Paper 3 completed",
+          description: "Moving to Paper 4 - Investigations.",
+        });
+      } else if (currentPaper === 'paper4') {
+        setCurrentPaper('paper5');
+        toast({
+          title: "Paper 4 completed",
           description: "Moving to Paper 5 - Final Diagnosis.",
         });
       } else {
@@ -141,6 +157,17 @@ const FormPage = () => {
     return Math.round((answeredQuestions / totalQuestions) * 100);
   };
 
+  const getPaperInfo = (paper: string) => {
+    switch (paper) {
+      case 'paper1': return { title: 'Dental History', icon: User, description: 'Patient dental background and history' };
+      case 'paper2': return { title: 'Medical History', icon: Heart, description: 'Medical conditions and medications' };
+      case 'paper3': return { title: 'Clinical Examination', icon: Stethoscope, description: 'Physical examination findings' };
+      case 'paper4': return { title: 'Investigations', icon: FileText, description: 'Diagnostic tests and imaging' };
+      case 'paper5': return { title: 'Final Diagnosis', icon: Stethoscope, description: 'Diagnosis and treatment plan' };
+      default: return { title: 'Unknown', icon: FileText, description: '' };
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
       {/* Compact Header */}
@@ -168,6 +195,18 @@ const FormPage = () => {
                     <>
                       <Heart className="w-4 h-4 mr-1 text-teal-600" />
                       Paper 2: {paperTitle}
+                    </>
+                  )}
+                  {currentPaper === 'paper3' && (
+                    <>
+                      <Stethoscope className="w-4 h-4 mr-1 text-teal-600" />
+                      Paper 3: {paperTitle}
+                    </>
+                  )}
+                  {currentPaper === 'paper4' && (
+                    <>
+                      <FileText className="w-4 h-4 mr-1 text-teal-600" />
+                      Paper 4: {paperTitle}
                     </>
                   )}
                   {currentPaper === 'paper5' && (
@@ -207,6 +246,8 @@ const FormPage = () => {
               <div className="text-xs font-medium text-gray-900 mb-1">
                 {currentPaper === 'paper1' && 'Paper 1: Dental History'}
                 {currentPaper === 'paper2' && 'Paper 2: Medical History'}
+                {currentPaper === 'paper3' && 'Paper 3: Clinical Examination'}
+                {currentPaper === 'paper4' && 'Paper 4: Investigations'}
                 {currentPaper === 'paper5' && 'Paper 5: Final Diagnosis'}
               </div>
               <div className="text-xs text-gray-600 mb-2">
@@ -223,66 +264,113 @@ const FormPage = () => {
         </div>
       </header>
 
-      {/* Main Content with Fixed Layout */}
+      {/* Main Content with Improved Layout */}
       <div className="flex h-[calc(100vh-3rem)] overflow-hidden">
-        {/* Left Side - AI Patient (Fixed) */}
-        <div className="w-full lg:w-1/3 p-3 bg-white border-r border-teal-100 overflow-y-auto">
+        {/* Center - AI Patient (Prominent Display) */}
+        <div className="w-full lg:w-2/5 xl:w-1/3 bg-white border-r border-teal-100 flex items-center justify-center">
           <AIDentalPatient />
         </div>
 
         {/* Right Side - Form Content */}
-        <div className="hidden lg:flex flex-col w-2/3">
-          {/* Paper Navigation */}
-          <div className="p-3 bg-white border-b border-teal-100 flex-shrink-0">
-            <div className="bg-white rounded-lg p-1 shadow-sm border border-teal-100">
-              <div className="flex space-x-1">
-                <Button
-                  variant={currentPaper === 'paper1' ? 'default' : 'ghost'}
-                  onClick={() => setCurrentPaper('paper1')}
-                  size="sm"
-                  className={`flex-1 text-xs ${currentPaper === 'paper1' ? 'dental-button-primary' : 'hover:bg-teal-50'}`}
-                >
-                  <User className="w-3 h-3 mr-1" />
-                  Paper 1
-                </Button>
-                <Button
-                  variant={currentPaper === 'paper2' ? 'default' : 'ghost'}
-                  onClick={() => setCurrentPaper('paper2')}
-                  size="sm"
-                  className={`flex-1 text-xs ${currentPaper === 'paper2' ? 'dental-button-primary' : 'hover:bg-teal-50'}`}
-                >
-                  <Heart className="w-3 h-3 mr-1" />
-                  Paper 2
-                </Button>
-                <Button
-                  variant={currentPaper === 'paper5' ? 'default' : 'ghost'}
-                  onClick={() => setCurrentPaper('paper5')}
-                  size="sm"
-                  className={`flex-1 text-xs ${currentPaper === 'paper5' ? 'dental-button-primary' : 'hover:bg-teal-50'}`}
-                >
-                  <Stethoscope className="w-3 h-3 mr-1" />
-                  Paper 5
-                </Button>
+        <div className="hidden lg:flex flex-col w-3/5 xl:w-2/3">
+          {/* Enhanced Paper Navigation */}
+          <div className="p-4 bg-white border-b border-teal-100 flex-shrink-0">
+            <div className="bg-white rounded-lg p-2 shadow-sm border border-teal-100">
+              <div className="flex space-x-1 mb-3">
+                {['paper1', 'paper2', 'paper3', 'paper4', 'paper5'].map((paper) => {
+                  const paperInfo = getPaperInfo(paper);
+                  const IconComponent = paperInfo.icon;
+                  return (
+                    <Button
+                      key={paper}
+                      variant={currentPaper === paper ? 'default' : 'ghost'}
+                      onClick={() => setCurrentPaper(paper as any)}
+                      size="sm"
+                      className={`flex-1 text-xs ${currentPaper === paper ? 'dental-button-primary' : 'hover:bg-teal-50'}`}
+                    >
+                      <IconComponent className="w-3 h-3 mr-1" />
+                      {paper === 'paper1' && 'Paper 1'}
+                      {paper === 'paper2' && 'Paper 2'}
+                      {paper === 'paper3' && 'Paper 3'}
+                      {paper === 'paper4' && 'Paper 4'}
+                      {paper === 'paper5' && 'Paper 5'}
+                    </Button>
+                  );
+                })}
               </div>
               
-              {/* Compact Progress Bar */}
-              <div className="mt-2 bg-gray-200 rounded-full h-1">
+              {/* Paper Description */}
+              <div className="text-center mb-2">
+                <h3 className="text-sm font-medium text-gray-900">{getPaperInfo(currentPaper).title}</h3>
+                <p className="text-xs text-gray-600">{getPaperInfo(currentPaper).description}</p>
+              </div>
+              
+              {/* Enhanced Progress Bar */}
+              <div className="bg-gray-200 rounded-full h-2">
                 <div 
-                  className="bg-gradient-to-r from-teal-500 to-cyan-500 h-1 rounded-full transition-all duration-300"
+                  className="bg-gradient-to-r from-teal-500 to-cyan-500 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${getCompletionPercentage()}%` }}
                 ></div>
+              </div>
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span>{getCompletionPercentage()}% Complete</span>
+                <span>Patient {patientId?.slice(-1)}</span>
               </div>
             </div>
           </div>
 
           {/* Form Sections - Scrollable */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-4">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {currentPaper === 'paper3' && (
+              <Card className="dental-card">
+                <CardHeader className="py-3">
+                  <CardTitle className="text-lg text-gray-900 flex items-center">
+                    <div className="w-1 h-6 bg-gradient-to-b from-teal-500 to-cyan-500 rounded-full mr-2"></div>
+                    Clinical Examination
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-gray-600 text-sm">
+                    This section will contain clinical examination forms and findings.
+                    Physical examination, oral examination, and clinical observations will be recorded here.
+                  </p>
+                  <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
+                    <p className="text-teal-800 text-sm font-medium">
+                      🚧 Clinical Examination forms are being developed and will be available soon.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {currentPaper === 'paper4' && (
+              <Card className="dental-card">
+                <CardHeader className="py-3">
+                  <CardTitle className="text-lg text-gray-900 flex items-center">
+                    <div className="w-1 h-6 bg-gradient-to-b from-teal-500 to-cyan-500 rounded-full mr-2"></div>
+                    Investigations & Diagnostics
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-gray-600 text-sm">
+                    Document diagnostic tests, radiographs, laboratory results, and other investigations.
+                    This section supports comprehensive diagnostic workup documentation.
+                  </p>
+                  <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
+                    <p className="text-teal-800 text-sm font-medium">
+                      🚧 Investigation forms and diagnostic tools are being developed and will be available soon.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {currentPaper === 'paper5' ? (
               <Paper5Form 
                 onSubmit={handlePaper5Submit}
                 isLoading={isLoading}
               />
-            ) : (
+            ) : currentPaper !== 'paper3' && currentPaper !== 'paper4' && (
               Object.entries(groupedQuestions).map(([section, questions]) => (
                 <Card key={section} className="dental-card">
                   <CardHeader className="py-3">
@@ -310,7 +398,7 @@ const FormPage = () => {
 
           {/* Action Buttons - Fixed at bottom */}
           {currentPaper !== 'paper5' && (
-            <div className="p-3 bg-white border-t border-teal-100 flex-shrink-0">
+            <div className="p-4 bg-white border-t border-teal-100 flex-shrink-0">
               <div className="flex justify-between items-center">
                 <Button 
                   variant="outline" 
@@ -320,20 +408,26 @@ const FormPage = () => {
                   className="dental-button-secondary text-xs"
                 >
                   <Save className="w-3 h-3 mr-1" />
-                  {isLoading ? 'Saving...' : 'Save'}
+                  {isLoading ? 'Saving...' : 'Save Progress'}
                 </Button>
                 
                 <div className="flex space-x-2">
-                  {currentPaper === 'paper2' && (
+                  {currentPaper !== 'paper1' && (
                     <Button
                       variant="outline"
-                      onClick={() => setCurrentPaper('paper1')}
+                      onClick={() => {
+                        const papers = ['paper1', 'paper2', 'paper3', 'paper4', 'paper5'];
+                        const currentIndex = papers.indexOf(currentPaper);
+                        if (currentIndex > 0) {
+                          setCurrentPaper(papers[currentIndex - 1] as any);
+                        }
+                      }}
                       size="sm"
                       className="dental-button-secondary text-xs"
                       disabled={isLoading}
                     >
                       <ArrowLeft className="w-3 h-3 mr-1" />
-                      Paper 1
+                      Previous
                     </Button>
                   )}
                   <Button 
@@ -343,7 +437,11 @@ const FormPage = () => {
                     className="dental-button-primary text-xs"
                   >
                     <Send className="w-3 h-3 mr-1" />
-                    {isLoading ? 'Processing...' : currentPaper === 'paper1' ? 'Paper 2' : 'Paper 5'}
+                    {isLoading ? 'Processing...' : 
+                     currentPaper === 'paper1' ? 'Next: Paper 2' :
+                     currentPaper === 'paper2' ? 'Next: Paper 3' :
+                     currentPaper === 'paper3' ? 'Next: Paper 4' :
+                     currentPaper === 'paper4' ? 'Next: Paper 5' : 'Complete'}
                   </Button>
                 </div>
               </div>
@@ -357,44 +455,81 @@ const FormPage = () => {
         {/* Paper Navigation */}
         <div className="bg-white rounded-lg p-2 shadow-sm border border-teal-100">
           <div className="flex space-x-1 mb-2">
-            <Button
-              variant={currentPaper === 'paper1' ? 'default' : 'ghost'}
-              onClick={() => setCurrentPaper('paper1')}
-              size="sm"
-              className={`flex-1 text-xs ${currentPaper === 'paper1' ? 'dental-button-primary' : 'hover:bg-teal-50'}`}
-            >
-              <User className="w-3 h-3 mr-1" />
-              Paper 1
-            </Button>
-            <Button
-              variant={currentPaper === 'paper2' ? 'default' : 'ghost'}
-              onClick={() => setCurrentPaper('paper2')}
-              size="sm"
-              className={`flex-1 text-xs ${currentPaper === 'paper2' ? 'dental-button-primary' : 'hover:bg-teal-50'}`}
-            >
-              <Heart className="w-3 h-3 mr-1" />
-              Paper 2
-            </Button>
-            <Button
-              variant={currentPaper === 'paper5' ? 'default' : 'ghost'}
-              onClick={() => setCurrentPaper('paper5')}
-              size="sm"
-              className={`flex-1 text-xs ${currentPaper === 'paper5' ? 'dental-button-primary' : 'hover:bg-teal-50'}`}
-            >
-              <Stethoscope className="w-3 h-3 mr-1" />
-              Paper 5
-            </Button>
+            {['paper1', 'paper2', 'paper3', 'paper4', 'paper5'].map((paper) => {
+              const paperInfo = getPaperInfo(paper);
+              const IconComponent = paperInfo.icon;
+              return (
+                <Button
+                  key={paper}
+                  variant={currentPaper === paper ? 'default' : 'ghost'}
+                  onClick={() => setCurrentPaper(paper as any)}
+                  size="sm"
+                  className={`flex-1 text-xs ${currentPaper === paper ? 'dental-button-primary' : 'hover:bg-teal-50'}`}
+                >
+                  <IconComponent className="w-3 h-3 mr-1" />
+                  {paper === 'paper1' && 'Paper 1'}
+                  {paper === 'paper2' && 'Paper 2'}
+                  {paper === 'paper3' && 'Paper 3'}
+                  {paper === 'paper4' && 'Paper 4'}
+                  {paper === 'paper5' && 'Paper 5'}
+                </Button>
+              );
+            })}
           </div>
           
-          <div className="bg-gray-200 rounded-full h-1">
+          <div className="bg-gray-200 rounded-full h-2">
             <div 
-              className="bg-gradient-to-r from-teal-500 to-cyan-500 h-1 rounded-full transition-all duration-300"
+              className="bg-gradient-to-r from-teal-500 to-cyan-500 h-2 rounded-full transition-all duration-300"
               style={{ width: `${getCompletionPercentage()}%` }}
             ></div>
           </div>
         </div>
 
         {/* Form Sections */}
+        {currentPaper === 'paper3' && (
+          <Card className="dental-card">
+            <CardHeader className="py-3">
+              <CardTitle className="text-lg text-gray-900 flex items-center">
+                <div className="w-1 h-6 bg-gradient-to-b from-teal-500 to-cyan-500 rounded-full mr-2"></div>
+                Clinical Examination
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-gray-600 text-sm">
+                This section will contain clinical examination forms and findings.
+                Physical examination, oral examination, and clinical observations will be recorded here.
+              </p>
+              <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
+                <p className="text-teal-800 text-sm font-medium">
+                  🚧 Clinical Examination forms are being developed and will be available soon.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {currentPaper === 'paper4' && (
+          <Card className="dental-card">
+            <CardHeader className="py-3">
+              <CardTitle className="text-lg text-gray-900 flex items-center">
+                <div className="w-1 h-6 bg-gradient-to-b from-teal-500 to-cyan-500 rounded-full mr-2"></div>
+                Investigations & Diagnostics
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-gray-600 text-sm">
+                Document diagnostic tests, radiographs, laboratory results, and other investigations.
+                This section supports comprehensive diagnostic workup documentation.
+              </p>
+              <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
+                <p className="text-teal-800 text-sm font-medium">
+                  🚧 Investigation forms and diagnostic tools are being developed and will be available soon.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {currentPaper === 'paper5' ? (
           <Paper5Form 
             onSubmit={handlePaper5Submit}
@@ -435,7 +570,7 @@ const FormPage = () => {
             className="dental-button-secondary text-xs"
           >
             <Save className="w-3 h-3 mr-1" />
-            Save
+            Save Progress
           </Button>
           
           <Button 
@@ -445,7 +580,10 @@ const FormPage = () => {
             className="dental-button-primary text-xs"
           >
             <Send className="w-3 h-3 mr-1" />
-            {currentPaper === 'paper1' ? 'Paper 2' : 'Paper 5'}
+            {currentPaper === 'paper1' ? 'Next: Paper 2' :
+             currentPaper === 'paper2' ? 'Next: Paper 3' :
+             currentPaper === 'paper3' ? 'Next: Paper 4' :
+             currentPaper === 'paper4' ? 'Next: Paper 5' : 'Complete'}
           </Button>
         </div>
       </div>
