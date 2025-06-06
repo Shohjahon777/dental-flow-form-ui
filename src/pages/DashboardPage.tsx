@@ -55,9 +55,9 @@ const DashboardPage = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Start New Assessment */}
-          <Link to="/patients">
-            <Card className="hover:shadow-lg transition-all duration-200 border-0 shadow-md cursor-pointer group">
-              <CardHeader className="text-center pb-4">
+          <Link to="/patients" className="h-full">
+            <Card className="h-full hover:shadow-lg transition-all duration-200 border-0 shadow-md cursor-pointer group">
+              <CardHeader className="text-center pb-4 flex-grow">
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-primary/20 transition-colors">
                   <Users className="w-8 h-8 text-primary" />
                 </div>
@@ -66,7 +66,7 @@ const DashboardPage = () => {
                   Select a patient and start filling out Papers 1 & 2
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-0">
                 <Button className="w-full bg-primary hover:bg-primary/90">
                   Select Patient
                 </Button>
@@ -75,8 +75,8 @@ const DashboardPage = () => {
           </Link>
 
           {/* View Forms */}
-          <Card className="shadow-md border-0">
-            <CardHeader className="text-center pb-4">
+          <Card className="h-full shadow-md border-0">
+            <CardHeader className="text-center pb-4 flex-grow">
               <div className="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <FileText className="w-8 h-8 text-teal-600" />
               </div>
@@ -85,7 +85,7 @@ const DashboardPage = () => {
                 View and review form templates for Papers 1-4
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <Button variant="outline" className="w-full" disabled>
                 Coming Soon
               </Button>
@@ -93,8 +93,8 @@ const DashboardPage = () => {
           </Card>
 
           {/* Assessment History */}
-          <Card className="shadow-md border-0">
-            <CardHeader className="text-center pb-4">
+          <Card className="h-full shadow-md border-0">
+            <CardHeader className="text-center pb-4 flex-grow">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <History className="w-8 h-8 text-blue-600" />
               </div>
@@ -103,7 +103,7 @@ const DashboardPage = () => {
                 Review previous patient assessments and submissions
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <Button variant="outline" className="w-full" disabled>
                 Coming Soon
               </Button>
@@ -111,7 +111,7 @@ const DashboardPage = () => {
           </Card>
         </div>
 
-        {/* Recent Activity */}
+        {/* Quick Start Guide */}
         <div className="mt-12">
           <h3 className="text-2xl font-bold text-gray-900 mb-6">Quick Start Guide</h3>
           <div className="bg-white rounded-xl shadow-md border-0 p-6">
