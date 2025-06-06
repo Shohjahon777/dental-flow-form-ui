@@ -22,7 +22,9 @@ export const Paper5Form = ({ onSubmit, isLoading = false }: Paper5FormProps) => 
     finalDiagnosis: '',
     diagnosisJustification: '',
     treatmentPlan: '',
-    dateOfDiagnosis: null
+    dateOfDiagnosis: null,
+    prognosis: 'good',
+    status: 'draft'
   });
 
   const handleSubmit = () => {
