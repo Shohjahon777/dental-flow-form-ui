@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -7,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { AIDentalPatient } from '@/components/ui/ai-dental-patient';
 import { FormQuestionRenderer } from '@/components/FormQuestionRenderer';
+import { Paper5Form } from '@/components/forms/Paper5Form';
 import { paper1Questions, paper2Questions, sampleFormData, FormQuestion } from '@/data/formQuestions';
-import { ArrowLeft, FileText, Save, Send, User, Heart, Menu } from 'lucide-react';
+import { Paper5FormData } from '@/data/paper5Questions';
+import { ArrowLeft, FileText, Save, Send, User, Heart, Menu, Stethoscope } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const FormPage = () => {
@@ -17,7 +18,7 @@ const FormPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [formData, setFormData] = useState<Record<string, any>>({});
-  const [currentPaper, setCurrentPaper] = useState<'paper1' | 'paper2'>('paper1');
+  const [currentPaper, setCurrentPaper] = useState<'paper1' | 'paper2' | 'paper5'>('paper1');
   const [isLoading, setIsLoading] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -26,8 +27,21 @@ const FormPage = () => {
     setFormData(sampleFormData);
   }, []);
 
-  const currentQuestions = currentPaper === 'paper1' ? paper1Questions : paper2Questions;
-  const paperTitle = currentPaper === 'paper1' ? 'Dental History' : 'Medical History';
+  const getCurrentQuestions = () => {
+    switch (currentPaper) {
+      case 'paper1': return paper1Questions;
+      case 'paper2': return paper2Questions;
+      case 'paper5': return [];
+      default: return paper1Questions;
+    }
+  };
+
+  const currentQuestions = getCurrentQuestions();
+  const paperTitle = {
+    paper1: 'Dental History',
+    paper2: 'Medical History', 
+    paper5: 'Final Diagnosis'
+  }[currentPaper];
 
   const handleInputChange = (questionId: string, value: any) => {
     setFormData(prev => ({
@@ -65,12 +79,18 @@ const FormPage = () => {
           title: "Paper 1 completed",
           description: "Moving to Paper 2 - Medical History.",
         });
+      } else if (currentPaper === 'paper2') {
+        setCurrentPaper('paper5');
+        toast({
+          title: "Paper 2 completed",
+          description: "Moving to Paper 5 - Final Diagnosis.",
+        });
       } else {
         localStorage.setItem(`dentalApp_form_${patientId}`, JSON.stringify(formData));
         localStorage.setItem(`dentalApp_submitted_${patientId}`, 'true');
         
         toast({
-          title: "Forms submitted successfully!",
+          title: "All forms completed!",
           description: "Proceeding to review Clinical Findings & Investigations.",
         });
         
@@ -87,6 +107,11 @@ const FormPage = () => {
     }
   };
 
+  const handlePaper5Submit = (data: Paper5FormData) => {
+    setFormData(prev => ({ ...prev, paper5: data }));
+    handleSubmit();
+  };
+
   const groupedQuestions = currentQuestions.reduce((acc, question) => {
     if (!acc[question.section]) {
       acc[question.section] = [];
@@ -96,6 +121,14 @@ const FormPage = () => {
   }, {} as Record<string, FormQuestion[]>);
 
   const getCompletionPercentage = () => {
+    if (currentPaper === 'paper5') {
+      const paper5Data = formData.paper5 as Paper5FormData;
+      if (!paper5Data) return 0;
+      const requiredFields = ['finalDiagnosis', 'diagnosisJustification', 'dateOfDiagnosis'];
+      const completed = requiredFields.filter(field => paper5Data[field as keyof Paper5FormData]).length;
+      return Math.round((completed / requiredFields.length) * 100);
+    }
+    
     const totalQuestions = currentQuestions.length;
     const answeredQuestions = currentQuestions.filter(q => {
       const value = formData[q.id];
@@ -125,15 +158,22 @@ const FormPage = () => {
               </Button>
               <div className="hidden sm:block">
                 <h1 className="text-sm font-semibold text-gray-900 flex items-center">
-                  {currentPaper === 'paper1' ? (
+                  {currentPaper === 'paper1' && (
                     <>
                       <User className="w-4 h-4 mr-1 text-teal-600" />
                       Paper 1: {paperTitle}
                     </>
-                  ) : (
+                  )}
+                  {currentPaper === 'paper2' && (
                     <>
                       <Heart className="w-4 h-4 mr-1 text-teal-600" />
                       Paper 2: {paperTitle}
+                    </>
+                  )}
+                  {currentPaper === 'paper5' && (
+                    <>
+                      <Stethoscope className="w-4 h-4 mr-1 text-teal-600" />
+                      Paper 5: {paperTitle}
                     </>
                   )}
                 </h1>
@@ -165,7 +205,9 @@ const FormPage = () => {
           {isMobileMenuOpen && (
             <div className="sm:hidden border-t border-teal-100 pt-2 pb-2">
               <div className="text-xs font-medium text-gray-900 mb-1">
-                {currentPaper === 'paper1' ? 'Paper 1: Dental History' : 'Paper 2: Medical History'}
+                {currentPaper === 'paper1' && 'Paper 1: Dental History'}
+                {currentPaper === 'paper2' && 'Paper 2: Medical History'}
+                {currentPaper === 'paper5' && 'Paper 5: Final Diagnosis'}
               </div>
               <div className="text-xs text-gray-600 mb-2">
                 Patient {patientId?.slice(-1)} • {getCompletionPercentage()}% Complete
@@ -193,7 +235,7 @@ const FormPage = () => {
           {/* Paper Navigation */}
           <div className="p-3 bg-white border-b border-teal-100 flex-shrink-0">
             <div className="bg-white rounded-lg p-1 shadow-sm border border-teal-100">
-              <div className="flex space-x-2">
+              <div className="flex space-x-1">
                 <Button
                   variant={currentPaper === 'paper1' ? 'default' : 'ghost'}
                   onClick={() => setCurrentPaper('paper1')}
@@ -212,6 +254,15 @@ const FormPage = () => {
                   <Heart className="w-3 h-3 mr-1" />
                   Paper 2
                 </Button>
+                <Button
+                  variant={currentPaper === 'paper5' ? 'default' : 'ghost'}
+                  onClick={() => setCurrentPaper('paper5')}
+                  size="sm"
+                  className={`flex-1 text-xs ${currentPaper === 'paper5' ? 'dental-button-primary' : 'hover:bg-teal-50'}`}
+                >
+                  <Stethoscope className="w-3 h-3 mr-1" />
+                  Paper 5
+                </Button>
               </div>
               
               {/* Compact Progress Bar */}
@@ -226,69 +277,78 @@ const FormPage = () => {
 
           {/* Form Sections - Scrollable */}
           <div className="flex-1 overflow-y-auto p-3 space-y-4">
-            {Object.entries(groupedQuestions).map(([section, questions]) => (
-              <Card key={section} className="dental-card">
-                <CardHeader className="py-3">
-                  <CardTitle className="text-lg text-gray-900 flex items-center">
-                    <div className="w-1 h-6 bg-gradient-to-b from-teal-500 to-cyan-500 rounded-full mr-2"></div>
-                    {section}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {questions.map((question, index) => (
-                    <div key={question.id}>
-                      <FormQuestionRenderer
-                        question={question}
-                        value={formData[question.id]}
-                        onChange={(value) => handleInputChange(question.id, value)}
-                      />
-                      {index < questions.length - 1 && <Separator className="my-3 bg-teal-100" />}
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            ))}
+            {currentPaper === 'paper5' ? (
+              <Paper5Form 
+                onSubmit={handlePaper5Submit}
+                isLoading={isLoading}
+              />
+            ) : (
+              Object.entries(groupedQuestions).map(([section, questions]) => (
+                <Card key={section} className="dental-card">
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-lg text-gray-900 flex items-center">
+                      <div className="w-1 h-6 bg-gradient-to-b from-teal-500 to-cyan-500 rounded-full mr-2"></div>
+                      {section}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {questions.map((question, index) => (
+                      <div key={question.id}>
+                        <FormQuestionRenderer
+                          question={question}
+                          value={formData[question.id]}
+                          onChange={(value) => handleInputChange(question.id, value)}
+                        />
+                        {index < questions.length - 1 && <Separator className="my-3 bg-teal-100" />}
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
 
           {/* Action Buttons - Fixed at bottom */}
-          <div className="p-3 bg-white border-t border-teal-100 flex-shrink-0">
-            <div className="flex justify-between items-center">
-              <Button 
-                variant="outline" 
-                onClick={handleSave} 
-                disabled={isLoading}
-                size="sm"
-                className="dental-button-secondary text-xs"
-              >
-                <Save className="w-3 h-3 mr-1" />
-                {isLoading ? 'Saving...' : 'Save'}
-              </Button>
-              
-              <div className="flex space-x-2">
-                {currentPaper === 'paper2' && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setCurrentPaper('paper1')}
-                    size="sm"
-                    className="dental-button-secondary text-xs"
-                    disabled={isLoading}
-                  >
-                    <ArrowLeft className="w-3 h-3 mr-1" />
-                    Paper 1
-                  </Button>
-                )}
+          {currentPaper !== 'paper5' && (
+            <div className="p-3 bg-white border-t border-teal-100 flex-shrink-0">
+              <div className="flex justify-between items-center">
                 <Button 
-                  onClick={handleSubmit} 
+                  variant="outline" 
+                  onClick={handleSave} 
                   disabled={isLoading}
                   size="sm"
-                  className="dental-button-primary text-xs"
+                  className="dental-button-secondary text-xs"
                 >
-                  <Send className="w-3 h-3 mr-1" />
-                  {isLoading ? 'Processing...' : currentPaper === 'paper1' ? 'Paper 2' : 'Submit'}
+                  <Save className="w-3 h-3 mr-1" />
+                  {isLoading ? 'Saving...' : 'Save'}
                 </Button>
+                
+                <div className="flex space-x-2">
+                  {currentPaper === 'paper2' && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setCurrentPaper('paper1')}
+                      size="sm"
+                      className="dental-button-secondary text-xs"
+                      disabled={isLoading}
+                    >
+                      <ArrowLeft className="w-3 h-3 mr-1" />
+                      Paper 1
+                    </Button>
+                  )}
+                  <Button 
+                    onClick={handleSubmit} 
+                    disabled={isLoading}
+                    size="sm"
+                    className="dental-button-primary text-xs"
+                  >
+                    <Send className="w-3 h-3 mr-1" />
+                    {isLoading ? 'Processing...' : currentPaper === 'paper1' ? 'Paper 2' : 'Paper 5'}
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -296,7 +356,7 @@ const FormPage = () => {
       <div className="lg:hidden p-3 space-y-4">
         {/* Paper Navigation */}
         <div className="bg-white rounded-lg p-2 shadow-sm border border-teal-100">
-          <div className="flex space-x-2 mb-2">
+          <div className="flex space-x-1 mb-2">
             <Button
               variant={currentPaper === 'paper1' ? 'default' : 'ghost'}
               onClick={() => setCurrentPaper('paper1')}
@@ -315,6 +375,15 @@ const FormPage = () => {
               <Heart className="w-3 h-3 mr-1" />
               Paper 2
             </Button>
+            <Button
+              variant={currentPaper === 'paper5' ? 'default' : 'ghost'}
+              onClick={() => setCurrentPaper('paper5')}
+              size="sm"
+              className={`flex-1 text-xs ${currentPaper === 'paper5' ? 'dental-button-primary' : 'hover:bg-teal-50'}`}
+            >
+              <Stethoscope className="w-3 h-3 mr-1" />
+              Paper 5
+            </Button>
           </div>
           
           <div className="bg-gray-200 rounded-full h-1">
@@ -326,28 +395,35 @@ const FormPage = () => {
         </div>
 
         {/* Form Sections */}
-        {Object.entries(groupedQuestions).map(([section, questions]) => (
-          <Card key={section} className="dental-card">
-            <CardHeader className="py-3">
-              <CardTitle className="text-base text-gray-900 flex items-center">
-                <div className="w-1 h-5 bg-gradient-to-b from-teal-500 to-cyan-500 rounded-full mr-2"></div>
-                {section}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {questions.map((question, index) => (
-                <div key={question.id}>
-                  <FormQuestionRenderer
-                    question={question}
-                    value={formData[question.id]}
-                    onChange={(value) => handleInputChange(question.id, value)}
-                  />
-                  {index < questions.length - 1 && <Separator className="my-2 bg-teal-100" />}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        ))}
+        {currentPaper === 'paper5' ? (
+          <Paper5Form 
+            onSubmit={handlePaper5Submit}
+            isLoading={isLoading}
+          />
+        ) : (
+          Object.entries(groupedQuestions).map(([section, questions]) => (
+            <Card key={section} className="dental-card">
+              <CardHeader className="py-3">
+                <CardTitle className="text-base text-gray-900 flex items-center">
+                  <div className="w-1 h-5 bg-gradient-to-b from-teal-500 to-cyan-500 rounded-full mr-2"></div>
+                  {section}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {questions.map((question, index) => (
+                  <div key={question.id}>
+                    <FormQuestionRenderer
+                      question={question}
+                      value={formData[question.id]}
+                      onChange={(value) => handleInputChange(question.id, value)}
+                    />
+                    {index < questions.length - 1 && <Separator className="my-2 bg-teal-100" />}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ))
+        )}
 
         {/* Mobile Action Buttons */}
         <div className="flex justify-between items-center bg-white rounded-lg p-3 shadow-sm border border-teal-100">
@@ -369,7 +445,7 @@ const FormPage = () => {
             className="dental-button-primary text-xs"
           >
             <Send className="w-3 h-3 mr-1" />
-            {currentPaper === 'paper1' ? 'Paper 2' : 'Submit'}
+            {currentPaper === 'paper1' ? 'Paper 2' : 'Paper 5'}
           </Button>
         </div>
       </div>
