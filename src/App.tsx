@@ -14,6 +14,8 @@ import FormPage from "./pages/FormPage";
 import ReviewPage from "./pages/ReviewPage";
 import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
+import { AssessmentHistorySection } from "./components/forms/AssessmentHistorySection";
+import { FormTemplatesSection } from "./components/forms/FormTemplatesSection";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +52,16 @@ const App = () => (
             <Route path="/admin" element={
               <ProtectedRoute>
                 <AdminPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/history" element={
+              <ProtectedRoute>
+                <AssessmentHistorySection />
+              </ProtectedRoute>
+            } />
+            <Route path="/template" element={
+              <ProtectedRoute>
+                <FormTemplatesSection />
               </ProtectedRoute>
             } />
             <Route path="*" element={<NotFound />} />
