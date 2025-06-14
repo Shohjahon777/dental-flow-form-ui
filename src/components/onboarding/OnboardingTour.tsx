@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { X, ChevronLeft, ChevronRight, Skip, Info } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, SkipForward, Info } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
 interface TourStep {
@@ -165,7 +165,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
                   onClick={onSkip}
                   className="text-gray-500 hover:text-gray-700"
                 >
-                  <Skip className="w-4 h-4 mr-2" />
+                  <SkipForward className="w-4 h-4 mr-2" />
                   Skip Tour
                 </Button>
                 
