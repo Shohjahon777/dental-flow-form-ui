@@ -24,48 +24,96 @@ const tourSteps: TourStep[] = [
   {
     id: 'welcome',
     title: 'Welcome to Bemor Portal',
-    content: 'This is your medical and dental history assessment system. Let\'s take a quick tour to get you started.',
+    content: 'This is your medical and dental history assessment system. Let\'s take a detailed tour to understand each feature and button.',
+    page: '/',
+    position: 'bottom'
+  },
+  {
+    id: 'logo',
+    title: 'Bemor Portal Logo',
+    content: 'This is the Bemor Portal logo. Click here anytime to return to the main dashboard from any page.',
+    target: '[data-tour="logo"]',
     page: '/',
     position: 'bottom'
   },
   {
     id: 'new-assessment',
-    title: 'Start New Assessment',
-    content: 'Click here to select a patient and begin filling out Papers 1 & 2. This is where your journey begins!',
+    title: 'Start New Assessment Button',
+    content: 'This button starts a new patient assessment. Click here to select a patient and begin filling out Papers 1 & 2. This is your primary action to begin work.',
     target: '[data-tour="new-assessment"]',
     page: '/',
     position: 'bottom'
   },
   {
     id: 'history',
-    title: 'Assessment History',
-    content: 'View all previous patient assessments and submissions here.',
+    title: 'Assessment History Button',
+    content: 'This button opens your assessment history. View all previous patient assessments, submissions, and track your progress over time.',
     target: '[data-tour="history"]',
     page: '/',
     position: 'bottom'
   },
   {
     id: 'templates',
-    title: 'Form Templates',
-    content: 'Review and access form templates for Papers 1-4.',
+    title: 'Form Templates Button',
+    content: 'This button provides access to form templates. Review and understand the structure of Papers 1-4 before starting assessments.',
     target: '[data-tour="templates"]',
     page: '/',
     position: 'bottom'
   },
   {
-    id: 'patient-selection',
-    title: 'Patient Selection',
-    content: 'Choose between different patient scenarios. Each patient has unique medical histories and complexity levels.',
+    id: 'guidelines-button',
+    title: 'Guidelines Button',
+    content: 'This floating button provides user guidelines and instructions. Click here whenever you need help or clarification about the assessment process.',
+    target: '[data-tour="guidelines"]',
+    page: '/',
+    position: 'left'
+  },
+  {
+    id: 'logout-button',
+    title: 'Logout Button',
+    content: 'This button safely logs you out of the system. Always use this button to end your session securely.',
+    target: '[data-tour="logout"]',
+    page: '/',
+    position: 'left'
+  },
+  {
+    id: 'patient-selection-intro',
+    title: 'Patient Selection Page',
+    content: 'Here you choose between different patient scenarios. Each patient has unique medical histories and complexity levels to enhance your learning.',
     page: '/patients',
     position: 'top'
   },
   {
     id: 'student-info',
-    title: 'Student Information',
-    content: 'Complete your information before starting the assessment. This ensures proper tracking of your work.',
+    title: 'Student Information Form',
+    content: 'Complete your student information in this form. This ensures proper tracking and identification of your assessment work.',
     target: '[data-tour="student-info"]',
     page: '/patients',
     position: 'right'
+  },
+  {
+    id: 'patient-cards',
+    title: 'Patient Selection Cards',
+    content: 'These cards represent different patients. Click on any card to select that patient. Each shows complexity level and basic information.',
+    target: '[data-tour="patient-cards"]',
+    page: '/patients',
+    position: 'top'
+  },
+  {
+    id: 'back-dashboard',
+    title: 'Back to Dashboard Button',
+    content: 'This button returns you to the main dashboard. Use it if you need to access other features or start over.',
+    target: '[data-tour="back-dashboard"]',
+    page: '/patients',
+    position: 'right'
+  },
+  {
+    id: 'start-assessment',
+    title: 'Start Assessment Button',
+    content: 'This button begins the actual assessment after you\'ve selected a patient and completed student info. It takes you to the form pages.',
+    target: '[data-tour="start-assessment"]',
+    page: '/patients',
+    position: 'left'
   }
 ];
 
@@ -114,7 +162,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
       
       {/* Tour Card */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md shadow-2xl border-2 border-teal-200">
+        <Card className="w-full max-w-lg shadow-2xl border-2 border-teal-200">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg font-semibold text-gray-900">
@@ -141,10 +189,13 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
                 />
               ))}
             </div>
+            <div className="text-sm text-gray-500 mt-1">
+              Step {currentStep + 1} of {currentPageSteps.length} on this page
+            </div>
           </CardHeader>
           
           <CardContent className="space-y-6">
-            <p className="text-gray-600 leading-relaxed">
+            <p className="text-gray-600 leading-relaxed text-base">
               {currentStepData.content}
             </p>
             

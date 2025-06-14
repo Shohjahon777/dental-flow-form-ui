@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -174,6 +173,7 @@ const PatientSelectionPage = () => {
                 size="sm" 
                 onClick={() => navigate('/')}
                 className="text-gray-600 hover:text-teal-700 hover:bg-teal-50"
+                data-tour="back-dashboard"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Dashboard
@@ -212,7 +212,7 @@ const PatientSelectionPage = () => {
               Available Patients
             </h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-tour="patient-cards">
               {patients.map((patient) => (
                 <Card 
                   key={patient.id}
@@ -265,6 +265,7 @@ const PatientSelectionPage = () => {
                 onClick={handleProceed}
                 disabled={!selectedPatient || !studentInfo}
                 className="dental-button-primary px-8"
+                data-tour="start-assessment"
               >
                 Start Assessment
               </Button>

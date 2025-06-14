@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { AIDentalPatient } from '@/components/ui/ai-dental-patient';
+import { DraftNotes } from '@/components/ui/draft-notes';
 import { FormQuestionRenderer } from '@/components/FormQuestionRenderer';
 import { Paper5Form } from '@/components/forms/Paper5Form';
 import { paper1Questions, paper2Questions, sampleFormData, FormQuestion } from '@/data/formQuestions';
@@ -266,9 +267,15 @@ const FormPage = () => {
 
       {/* Main Content with Improved Layout */}
       <div className="flex h-[calc(100vh-3rem)] overflow-hidden">
-        {/* Left Side - AI Patient (Fixed) */}
-        <div className="w-full lg:w-1/3 p-3 h-full bg-white border-r border-teal-100 overflow-y-auto">
+        {/* Left Side - AI Patient and Draft Notes */}
+        <div className="w-full lg:w-1/3 p-3 h-full bg-white border-r border-teal-100 overflow-y-auto space-y-4">
           <AIDentalPatient />
+          
+          {/* Draft Notes Component */}
+          <DraftNotes 
+            patientId={patientId || 'unknown'} 
+            formSection={currentPaper}
+          />
         </div>
 
         {/* Right Side - Form Content */}
@@ -452,6 +459,12 @@ const FormPage = () => {
 
       {/* Mobile Form Content (Full Width) */}
       <div className="lg:hidden p-3 space-y-4">
+        {/* Draft Notes for Mobile */}
+        <DraftNotes 
+          patientId={patientId || 'unknown'} 
+          formSection={currentPaper}
+        />
+
         {/* Paper Navigation */}
         <div className="bg-white rounded-lg p-2 shadow-sm border border-teal-100">
           <div className="flex space-x-1 mb-2">
