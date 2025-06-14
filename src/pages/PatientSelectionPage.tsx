@@ -1,12 +1,16 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { StudentInfoInput } from '@/components/ui/student-info-input';
-import { ArrowLeft, User, Users, Stethoscope } from 'lucide-react';
+import { ArrowLeft, User, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { BemorLogo } from '@/components/ui/bemor-logo';
+import { GuidelinesButton } from '@/components/ui/guidelines-button';
+import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
+import { useOnboarding } from '@/hooks/useOnboarding';
 
 interface StudentInfo {
   studentId: string;
@@ -14,14 +18,38 @@ interface StudentInfo {
   email: string;
 }
 
+interface Patient {
+  id: string;
+  name: string;
+  age: string;
+  gender: string;
+  description: string;
+  complexity: string;
+  color: string;
+  medicalHistory?: {
+    conditions: string[];
+    medications: string[];
+    allergies: string[];
+  };
+  dentalHistory?: {
+    lastVisit: string;
+    issues: string[];
+    treatments: string[];
+  };
+}
+
 const PatientSelectionPage = () => {
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null);
   const [studentInfo, setStudentInfo] = useState<StudentInfo | null>(null);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { showTour, completeTour, skipTour } = useOnboarding();
 
-  const patients = [
+  // Default patients (will be replaced by API call)
+  const defaultPatients: Patient[] = [
     {
       id: 'patient1',
       name: 'Patient 1',
@@ -29,7 +57,17 @@ const PatientSelectionPage = () => {
       gender: 'Female',
       description: 'Routine dental checkup with history of periodontal disease',
       complexity: 'Moderate',
-      color: 'bg-teal-50 border-teal-200 hover:bg-teal-100'
+      color: 'bg-teal-50 border-teal-200 hover:bg-teal-100',
+      medicalHistory: {
+        conditions: ['Hypertension', 'Type 2 Diabetes'],
+        medications: ['Metformin', 'Lisinopril'],
+        allergies: ['Penicillin']
+      },
+      dentalHistory: {
+        lastVisit: '6 months ago',
+        issues: ['Gingivitis', 'Plaque buildup'],
+        treatments: ['Cleaning', 'Scaling']
+      }
     },
     {
       id: 'patient2',
@@ -38,9 +76,46 @@ const PatientSelectionPage = () => {
       gender: 'Male',
       description: 'Emergency visit with dental pain and possible complications',
       complexity: 'High',
-      color: 'bg-cyan-50 border-cyan-200 hover:bg-cyan-100'
+      color: 'bg-cyan-50 border-cyan-200 hover:bg-cyan-100',
+      medicalHistory: {
+        conditions: ['Asthma'],
+        medications: ['Albuterol inhaler'],
+        allergies: ['Latex', 'Iodine']
+      },
+      dentalHistory: {
+        lastVisit: '2 years ago',
+        issues: ['Severe tooth pain', 'Swelling'],
+        treatments: ['Emergency consultation']
+      }
     }
   ];
+
+  useEffect(() => {
+    // Simulate API call to fetch patients
+    const fetchPatients = async () => {
+      try {
+        setLoading(true);
+        // TODO: Replace with actual API call
+        // const response = await fetch('/api/patients');
+        // const data = await response.json();
+        
+        // Simulate loading delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setPatients(defaultPatients);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load patient data. Using default patients.",
+          variant: "destructive",
+        });
+        setPatients(defaultPatients);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPatients();
+  }, []);
 
   const handleStudentInfoSubmit = (info: StudentInfo) => {
     setStudentInfo(info);
@@ -68,8 +143,27 @@ const PatientSelectionPage = () => {
     navigate(`/form/${selectedPatient}`);
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading patient data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
+      <GuidelinesButton />
+      
+      <OnboardingTour
+        isVisible={showTour}
+        onComplete={completeTour}
+        onSkip={skipTour}
+      />
+
       {/* Header */}
       <header className="dental-header">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -85,12 +179,7 @@ const PatientSelectionPage = () => {
                 Back to Dashboard
               </Button>
             </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-lg flex items-center justify-center">
-                <Stethoscope className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-semibold text-gray-900">Dental School Portal</span>
-            </div>
+            <BemorLogo size="sm" />
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">{user?.name}</span>
               <Button variant="outline" size="sm" onClick={logout} className="hover:bg-teal-50">
@@ -112,7 +201,7 @@ const PatientSelectionPage = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Student Information */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1" data-tour="student-info">
             <StudentInfoInput onSubmit={handleStudentInfoSubmit} />
           </div>
 

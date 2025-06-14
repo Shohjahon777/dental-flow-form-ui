@@ -3,25 +3,32 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
-import { Users, FileText, History, LogOut, Stethoscope } from 'lucide-react';
+import { Users, FileText, History, LogOut } from 'lucide-react';
+import { BemorLogo } from '@/components/ui/bemor-logo';
+import { GuidelinesButton } from '@/components/ui/guidelines-button';
+import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
+import { useOnboarding } from '@/hooks/useOnboarding';
 
 const DashboardPage = () => {
   const { user, logout } = useAuth();
+  const { showTour, completeTour, skipTour } = useOnboarding();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-indigo-50">
+      <GuidelinesButton />
+      
+      <OnboardingTour
+        isVisible={showTour}
+        onComplete={completeTour}
+        onSkip={skipTour}
+      />
+
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                <Stethoscope className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Dental School Portal</h1>
-                <p className="text-sm text-gray-600">Medical & Dental History Forms</p>
-              </div>
+              <BemorLogo size="md" />
             </div>
             <div className="flex items-center space-x-4">
               <div className="text-right">
@@ -55,7 +62,7 @@ const DashboardPage = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Start New Assessment */}
-          <Link to="/patients" className="h-full">
+          <Link to="/patients" className="h-full" data-tour="new-assessment">
             <Card className="h-full hover:shadow-lg transition-all duration-200 border-0 shadow-md cursor-pointer group">
               <CardHeader className="text-center pb-4 flex-grow">
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-primary/20 transition-colors">
@@ -64,8 +71,6 @@ const DashboardPage = () => {
                 <CardTitle className="text-xl text-gray-900">New Assessment</CardTitle>
                 <CardDescription className="text-gray-600">
                   Select a patient and start filling out Papers 1 & 2
-                  { }
-                  { }
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
@@ -76,7 +81,7 @@ const DashboardPage = () => {
             </Card>
           </Link>
 
-          <Link to="/history" className="h-full">
+          <Link to="/history" className="h-full" data-tour="history">
             <Card className="h-full hover:shadow-lg transition-all duration-200 border-0 shadow-md cursor-pointer group">
               <CardHeader className="text-center pb-4 flex-grow">
                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -89,13 +94,13 @@ const DashboardPage = () => {
               </CardHeader>
               <CardContent className="pt-0">
                 <Button className="w-full bg-primary hover:bg-primary/90">
-                  Select History
+                  View History
                 </Button>
               </CardContent>
             </Card>
           </Link>
 
-          <Link to="/template" className="h-full">
+          <Link to="/template" className="h-full" data-tour="templates">
             <Card className="h-full hover:shadow-lg transition-all duration-200 border-0 shadow-md cursor-pointer group">
               <CardHeader className="text-center pb-4 flex-grow">
                 <div className="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -108,12 +113,11 @@ const DashboardPage = () => {
               </CardHeader>
               <CardContent className="pt-0">
                 <Button className="w-full bg-primary hover:bg-primary/90">
-                  Select Template
+                  View Templates
                 </Button>
               </CardContent>
             </Card>
           </Link>
-
         </div>
 
         {/* Quick Start Guide */}
