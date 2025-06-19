@@ -12,12 +12,6 @@ import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import axios from 'axios';
 
-// interface StudentInfo {
-//   studentId: string;
-//   name: string;
-//   email: string;
-// }
-
 interface Patient {
   id: string;
   name: string;
@@ -40,8 +34,6 @@ interface Patient {
 
 const PatientSelectionPage = () => {
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null);
-  // const [studentInfo, setStudentInfo] = useState<StudentInfo | null>(null);
-  // const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -97,13 +89,9 @@ const PatientSelectionPage = () => {
     const fetchPatients = async () => {
       try {
         setLoading(true);
-        // TODO: Replace with actual API call
-        // const response = await fetch('/api/patients');
-        // const data = await response.json();
-
         const response = await axios.get(`http://localhost:8000/api/patients`)
         
-        const data= response.data;
+        const data = response.data;
         console.log("Fetched patients:", data);
         setPatients(data);
       } catch (error) {
@@ -121,45 +109,43 @@ const PatientSelectionPage = () => {
     fetchPatients();
   }, []);
 
-  // const handleStudentInfoSubmit = (info: StudentInfo) => {
-  //   setStudentInfo(info);
-  // };
-
   const handleProceed = async () => {
-  if (!selectedPatient) {
-    toast({
-      title: "Patient not selected",
-      description: "Please select a patient to continue.",
-      variant: "destructive",
-    });
-    return;
-  }
+    if (!selectedPatient) {
+      toast({
+        title: "Patient not selected",
+        description: "Please select a patient to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  try {
-    const response = await axios.post('http://localhost:8000/api/sessions', {
-      patient_id: selectedPatient,
-    });
+    console.log("Selected patient ID:", selectedPatient);
 
-    console.log("POST request response:", response.data);
+    try {
+      const response = await axios.post('http://localhost:8000/api/sessions', {
+        patient_id: selectedPatient,
+      });
 
-    toast({
-      title: "Session created",
-      description: "Session created successfully.",
-      variant: "default",
-    });
+      console.log("POST request response:", response.data);
 
-    navigate(`/form/${selectedPatient}`);
-  } catch (error) {
-    console.error("POST request error:", error);
+      toast({
+        title: "Session created",
+        description: "Session created successfully.",
+        variant: "default",
+      });
 
-    toast({
-      title: "Error creating session",
-      description: error.response?.data?.message || "An unexpected error occurred.",
-      variant: "destructive",
-    });
-  }
-};
+      // Navigate with the actual selected patient ID, not hardcoded
+      navigate(`/form/${selectedPatient}`);
+    } catch (error) {
+      console.error("POST request error:", error);
 
+      toast({
+        title: "Error creating session",
+        description: error.response?.data?.message || "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -214,16 +200,11 @@ const PatientSelectionPage = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Patient Assessment Setup</h1>
           <p className="text-gray-600">
-            Complete your information and select a patient to begin the dental and medical   history assessment.
+            Complete your information and select a patient to begin the dental and medical history assessment.
           </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Student Information */}
-          {/* <div className="lg:col-span-1" data-tour="student-info">
-            <StudentInfoInput onSubmit={handleStudentInfoSubmit} />
-          </div> */}
-
           {/* Right Column - Patient Selection */}
           <div className="lg:col-span-2 space-y-6">
             <h2 className="text-2xl font-bold text-gray-900 flex items-center">
@@ -240,7 +221,10 @@ const PatientSelectionPage = () => {
                       ? 'border-teal-500 bg-teal-50 shadow-xl scale-105' 
                       : `bg-teal-50 border-teal-200 hover:bg-teal-100 hover:shadow-xl hover:scale-102`
                   }`}
-                  onClick={() => setSelectedPatient(patient.id)}
+                  onClick={() => {
+                    console.log("Selecting patient:", patient.id, patient.name);
+                    setSelectedPatient(patient.id);
+                  }}
                 >
                   <CardHeader className="text-center pb-4">
                     <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
@@ -268,6 +252,18 @@ const PatientSelectionPage = () => {
                 </Card>
               ))}
             </div>
+
+            {/* Debug info */}
+            {selectedPatient && (
+              <div className="bg-blue-50 border border-blue-200 p-3 rounded-md">
+                <p className="text-sm text-blue-700">
+                  Selected Patient ID: {selectedPatient}
+                </p>
+                <p className="text-sm text-blue-700">
+                  Selected Patient Name: {patients.find(p => p.id === selectedPatient)?.name}
+                </p>
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="flex justify-between items-center bg-white rounded-lg p-6 shadow-lg border border-teal-100">
