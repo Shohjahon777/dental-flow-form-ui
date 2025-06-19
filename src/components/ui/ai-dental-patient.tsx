@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Volume2, Play, Pause, Sparkles, Stethoscope, Bot, MessageCircle, Brain, User2, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,12 +8,29 @@ import { dentalApiService, PatientInfo, SessionStatus, QuestionResponse, WebSock
 import { toast } from "sonner";
 
 // Extend the Window interface for speech recognition types
-type SpeechRecognition = any;
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+}
+
+interface SpeechRecognitionInterface extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start(): void;
+  stop(): void;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+}
 
 declare global {
   interface Window {
-    webkitSpeechRecognition?: typeof SpeechRecognition;
-    SpeechRecognition?: typeof SpeechRecognition;
+    webkitSpeechRecognition?: new () => SpeechRecognitionInterface;
+    SpeechRecognition?: new () => SpeechRecognitionInterface;
   }
 }
 
@@ -34,7 +50,7 @@ export function AIDentalPatient() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognitionInterface | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -182,29 +198,31 @@ export function AIDentalPatient() {
 
   const initializeSpeechRecognition = () => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
-      recognitionRef.current.lang = 'en-US';
+      const SpeechRecognitionConstructor = window.webkitSpeechRecognition || window.SpeechRecognition;
+      if (SpeechRecognitionConstructor) {
+        recognitionRef.current = new SpeechRecognitionConstructor();
+        recognitionRef.current.continuous = false;
+        recognitionRef.current.interimResults = false;
+        recognitionRef.current.lang = 'en-US';
 
-      recognitionRef.current.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setCurrentQuestion(transcript);
-        setIsListening(false);
-        // Send question via WebSocket or API
-        sendQuestion(transcript);
-      };
+        recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
+          const transcript = event.results[0][0].transcript;
+          setCurrentQuestion(transcript);
+          setIsListening(false);
+          // Send question via WebSocket or API
+          sendQuestion(transcript);
+        };
 
-      recognitionRef.current.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        setIsListening(false);
-        setError("Speech recognition failed: " + event.error);
-      };
+        recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
+          console.error('Speech recognition error:', event.error);
+          setIsListening(false);
+          setError("Speech recognition failed: " + event.error);
+        };
 
-      recognitionRef.current.onend = () => {
-        setIsListening(false);
-      };
+        recognitionRef.current.onend = () => {
+          setIsListening(false);
+        };
+      }
     }
   };
 
@@ -313,8 +331,7 @@ export function AIDentalPatient() {
       const voices = speechSynthesis.getVoices();
       const preferredVoice = voices.find(voice => 
         voice.name.includes('Neural') || 
-        voice.name.includes('Premium') || 
-        voice.quality === 'enhanced'
+        voice.name.includes('Premium')
       );
       if (preferredVoice) {
         utterance.voice = preferredVoice;
