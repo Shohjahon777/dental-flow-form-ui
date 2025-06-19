@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, MicOff, Volume2, Play, Pause, Sparkles, Stethoscope, Bot, MessageCircle, Brain, User2, Activity } from "lucide-react";
+import { Mic, MicOff, Volume2, Play, Pause, Sparkles, Stethoscope, Bot, MessageCircle, Brain, User2, Activity, AlertCircle, Wifi, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +45,7 @@ export function AIDentalPatient() {
   const [sessionStatus, setSessionStatus] = useState<SessionStatus | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<string>("");
   const [lastResponse, setLastResponse] = useState<string>("");
+  const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,12 +57,30 @@ export function AIDentalPatient() {
   const audioChunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
+    testBackendConnection();
     loadPatients();
     initializeSpeechRecognition();
     return () => {
       cleanup();
     };
   }, []);
+
+  const testBackendConnection = async () => {
+    try {
+      setConnectionStatus('connecting');
+      const isConnected = await dentalApiService.testConnection();
+      setConnectionStatus(isConnected ? 'connected' : 'error');
+      
+      if (!isConnected) {
+        setError('Backend server is not available. Please check if the FastAPI server is running on port 8000.');
+        toast.error('Backend connection failed');
+      }
+    } catch (err) {
+      setConnectionStatus('error');
+      setError('Cannot connect to backend server');
+      toast.error('Backend connection failed');
+    }
+  };
 
   const cleanup = () => {
     if (recognitionRef.current) {
@@ -81,13 +100,16 @@ export function AIDentalPatient() {
   const loadPatients = async () => {
     try {
       setLoading(true);
+      console.log('Loading patients...');
       const patientsData = await dentalApiService.getPatients();
+      console.log('Patients loaded:', patientsData);
       setPatients(patientsData);
       if (patientsData.length > 0) {
         setSelectedPatient(patientsData[0].id);
       }
     } catch (err) {
-      setError('Failed to load patients');
+      console.error('Error loading patients:', err);
+      setError('Failed to load patients. Please check if the backend server is running.');
       toast.error('Failed to load patients');
     } finally {
       setLoading(false);
@@ -99,6 +121,12 @@ export function AIDentalPatient() {
       setError('No patient selected');
       return;
     }
+    
+    if (connectionStatus !== 'connected') {
+      setError('Backend server is not available. Please check your connection.');
+      return;
+    }
+    
     await createSession(selectedPatient);
   };
 
@@ -107,6 +135,7 @@ export function AIDentalPatient() {
       setLoading(true);
       setError(null);
       
+      console.log('Creating session for patient:', patientId);
       const sessionData = await dentalApiService.createSession(patientId);
       setSessionActive(true);
       setConversationStarted(true);
@@ -114,13 +143,18 @@ export function AIDentalPatient() {
       toast.success(`Session started with ${sessionData.patient_name}`);
       
       // Get initial session status
-      const status = await dentalApiService.getSessionStatus(patientId);
-      setSessionStatus(status);
+      try {
+        const status = await dentalApiService.getSessionStatus(patientId);
+        setSessionStatus(status);
+      } catch (statusError) {
+        console.warn('Could not get initial session status:', statusError);
+      }
 
       // Initialize WebSocket connection
       initializeWebSocket(patientId);
       
     } catch (err) {
+      console.error('Session creation error:', err);
       setError(err instanceof Error ? err.message : 'Failed to create session');
       toast.error('Failed to create session');
     } finally {
@@ -130,6 +164,7 @@ export function AIDentalPatient() {
 
   const initializeWebSocket = (patientId: string) => {
     try {
+      console.log('Initializing WebSocket for patient:', patientId);
       wsRef.current = dentalApiService.connectWebSocket(
         patientId,
         handleWebSocketMessage,
@@ -138,7 +173,8 @@ export function AIDentalPatient() {
       );
     } catch (err) {
       console.error('Failed to initialize WebSocket:', err);
-      setError('Failed to connect to voice AI');
+      setError('Failed to connect to voice AI. Audio features may not work.');
+      toast.error('Voice AI connection failed');
     }
   };
 
@@ -174,14 +210,14 @@ export function AIDentalPatient() {
 
   const handleWebSocketError = (error: Event) => {
     console.error('WebSocket error:', error);
-    setError('Voice AI connection error');
+    setError('Voice AI connection error. Switching to text-only mode.');
     toast.error('Voice AI connection error');
   };
 
   const handleWebSocketClose = (event: CloseEvent) => {
     console.log('WebSocket closed:', event);
     if (sessionActive) {
-      toast.info('Voice AI connection closed');
+      toast.info('Voice AI connection closed. You can still type questions.');
     }
   };
 
@@ -233,10 +269,13 @@ export function AIDentalPatient() {
       setLoading(true);
       setError(null);
       
+      console.log('Sending question:', questionText);
+      
       // Try WebSocket first, fallback to HTTP API
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
         dentalApiService.sendTextQuestion(wsRef.current, questionText);
       } else {
+        console.log('WebSocket not available, using HTTP API');
         // Fallback to HTTP API
         const response = await dentalApiService.askQuestion(selectedPatient, questionText);
         setLastResponse(response.answer);
@@ -244,13 +283,18 @@ export function AIDentalPatient() {
         updateMoodFromResponse(response.answer);
         
         // Update session status
-        const status = await dentalApiService.getSessionStatus(selectedPatient);
-        setSessionStatus(status);
+        try {
+          const status = await dentalApiService.getSessionStatus(selectedPatient);
+          setSessionStatus(status);
+        } catch (statusError) {
+          console.warn('Could not update session status:', statusError);
+        }
       }
       
       setCurrentQuestion('');
       
     } catch (err) {
+      console.error('Error sending question:', err);
       setError(err instanceof Error ? err.message : 'Failed to ask question');
       toast.error('Failed to ask question');
     } finally {
@@ -387,6 +431,15 @@ export function AIDentalPatient() {
     }
   };
 
+  const getConnectionIcon = () => {
+    switch (connectionStatus) {
+      case 'connected': return <Wifi className="w-3 h-3 text-green-600" />;
+      case 'connecting': return <Wifi className="w-3 h-3 text-yellow-600 animate-pulse" />;
+      case 'error': return <WifiOff className="w-3 h-3 text-red-600" />;
+      default: return <WifiOff className="w-3 h-3 text-gray-400" />;
+    }
+  };
+
   return (
     <div className="flex justify-center items-center min-h-[60vh] p-6">
       <div className="w-full space-y-4">
@@ -470,8 +523,8 @@ export function AIDentalPatient() {
                 </Badge>
                 
                 <Badge variant="outline" className="text-xs bg-gradient-to-r from-teal-50 to-cyan-50 text-teal-700 border-teal-200">
-                  <Bot className="w-3 h-3 mr-1" />
-                  AI Powered
+                  {getConnectionIcon()}
+                  <span className="ml-1">{connectionStatus === 'connected' ? 'Online' : 'Offline'}</span>
                 </Badge>
               </div>
 
@@ -484,6 +537,14 @@ export function AIDentalPatient() {
           </CardHeader>
 
           <CardContent className="relative z-10 space-y-4">
+            {/* Connection Status Warning */}
+            {connectionStatus === 'error' && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-sm flex items-center">
+                <AlertCircle className="w-4 h-4 mr-2" />
+                Backend server unavailable. Please start your FastAPI server.
+              </div>
+            )}
+
             {/* Error/Success Messages */}
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-sm">
@@ -538,11 +599,15 @@ export function AIDentalPatient() {
               {!conversationStarted ? (
                 <Button 
                   onClick={handleStartConversation}
-                  disabled={loading}
-                  className="w-full bg-gradient-to-r from-teal-600 via-teal-700 to-cyan-600 hover:from-teal-700 hover:via-teal-800 hover:to-cyan-700 text-white font-semibold py-3 px-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2"
+                  disabled={loading || connectionStatus !== 'connected'}
+                  className="w-full bg-gradient-to-r from-teal-600 via-teal-700 to-cyan-600 hover:from-teal-700 hover:via-teal-800 hover:to-cyan-700 text-white font-semibold py-3 px-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Play className="h-4 w-4" />
-                  <span>{loading ? 'Starting...' : 'Begin Patient Interview'}</span>
+                  <span>
+                    {loading ? 'Starting...' : 
+                     connectionStatus !== 'connected' ? 'Backend Unavailable' : 
+                     'Begin Patient Interview'}
+                  </span>
                 </Button>
               ) : (
                 <div className="space-y-3">
@@ -581,6 +646,11 @@ export function AIDentalPatient() {
                     <p className="text-xs text-gray-600 animate-fade-in leading-relaxed">
                       Ask about medical history, current symptoms, pain levels, and dental concerns
                     </p>
+                    {connectionStatus !== 'connected' && (
+                      <p className="text-xs text-amber-600 mt-1">
+                        Voice features unavailable - text questions only
+                      </p>
+                    )}
                   </div>
                 </div>
               )}

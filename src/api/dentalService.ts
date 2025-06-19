@@ -1,3 +1,4 @@
+
 // api/dentalService.ts
 export interface PatientInfo {
   id: string;
@@ -21,6 +22,7 @@ export interface QuestionRequest {
 
 export interface QuestionResponse {
   patient_name: string;
+  question: string;
   answer: string;
   question_index: number;
   total_questions: number;
@@ -61,22 +63,39 @@ class DentalApiService {
   private baseUrl: string;
   private wsUrl: string;
 
-  constructor(baseUrl: string = 'http://localhost:8000') {
-    this.baseUrl = baseUrl;
-    this.wsUrl = baseUrl.replace('http', 'ws');
+  constructor() {
+    // Use environment variable or fallback to localhost
+    const apiUri = import.meta.env.VITE_AI_URI || 'http://localhost:8000';
+    this.baseUrl = apiUri.replace('/api', ''); // Remove /api suffix if present
+    this.wsUrl = this.baseUrl.replace('http', 'ws');
+    
+    console.log('Dental API Service initialized:', {
+      baseUrl: this.baseUrl,
+      wsUrl: this.wsUrl
+    });
   }
 
   // Get all available patients
   async getPatients(): Promise<PatientInfo[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/patients`);
+      console.log('Fetching patients from:', `${this.baseUrl}/api/patients`);
+      const response = await fetch(`${this.baseUrl}/api/patients`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      return await response.json();
+      
+      const patients = await response.json();
+      console.log('Patients fetched successfully:', patients);
+      return patients;
     } catch (error) {
       console.error('Error fetching patients:', error);
-      throw error;
+      throw new Error(`Failed to fetch patients: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -88,6 +107,7 @@ class DentalApiService {
     message: string;
   }> {
     try {
+      console.log('Creating session for patient:', patientId);
       const response = await fetch(`${this.baseUrl}/api/sessions`, {
         method: 'POST',
         headers: {
@@ -97,20 +117,23 @@ class DentalApiService {
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
         throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
       }
       
-      return await response.json();
+      const sessionData = await response.json();
+      console.log('Session created successfully:', sessionData);
+      return sessionData;
     } catch (error) {
       console.error('Error creating session:', error);
-      throw error;
+      throw new Error(`Failed to create session: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   // Ask a question to the selected patient
   async askQuestion(patientId: string, question: string): Promise<QuestionResponse> {
     try {
+      console.log('Asking question:', { patientId, question });
       const response = await fetch(`${this.baseUrl}/api/ask`, {
         method: 'POST',
         headers: {
@@ -123,62 +146,90 @@ class DentalApiService {
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
         throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
       }
       
-      return await response.json();
+      const questionResponse = await response.json();
+      console.log('Question response received:', questionResponse);
+      return questionResponse;
     } catch (error) {
       console.error('Error asking question:', error);
-      throw error;
+      throw new Error(`Failed to ask question: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   // Get session status for a patient
   async getSessionStatus(patientId: string): Promise<SessionStatus> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/sessions/${patientId}`);
+      console.log('Getting session status for patient:', patientId);
+      const response = await fetch(`${this.baseUrl}/api/sessions/${patientId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
         throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
       }
-      return await response.json();
+      
+      const status = await response.json();
+      console.log('Session status retrieved:', status);
+      return status;
     } catch (error) {
       console.error('Error fetching session status:', error);
-      throw error;
+      throw new Error(`Failed to get session status: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   // Delete a patient session
   async deleteSession(patientId: string): Promise<{ message: string }> {
     try {
+      console.log('Deleting session for patient:', patientId);
       const response = await fetch(`${this.baseUrl}/api/sessions/${patientId}`, {
         method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
         throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
       }
       
-      return await response.json();
+      const result = await response.json();
+      console.log('Session deleted successfully:', result);
+      return result;
     } catch (error) {
       console.error('Error deleting session:', error);
-      throw error;
+      throw new Error(`Failed to delete session: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   // Health check
   async healthCheck(): Promise<HealthStatus> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/health`);
+      console.log('Performing health check');
+      const response = await fetch(`${this.baseUrl}/api/health`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      return await response.json();
+      
+      const health = await response.json();
+      console.log('Health check successful:', health);
+      return health;
     } catch (error) {
       console.error('Error checking health:', error);
-      throw error;
+      throw new Error(`Health check failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -189,7 +240,10 @@ class DentalApiService {
     onError: (error: Event) => void,
     onClose: (event: CloseEvent) => void
   ): WebSocket {
-    const ws = new WebSocket(`${this.wsUrl}/ws/${patientId}`);
+    const wsUrl = `${this.wsUrl}/ws/${patientId}`;
+    console.log('Connecting to WebSocket:', wsUrl);
+    
+    const ws = new WebSocket(wsUrl);
     
     ws.onopen = () => {
       console.log(`WebSocket connected for patient: ${patientId}`);
@@ -198,14 +252,23 @@ class DentalApiService {
     ws.onmessage = (event) => {
       try {
         const message: WebSocketMessage = JSON.parse(event.data);
+        console.log('WebSocket message received:', message);
         onMessage(message);
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
+        onError(new Event('parse-error'));
       }
     };
     
-    ws.onerror = onError;
-    ws.onclose = onClose;
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      onError(error);
+    };
+    
+    ws.onclose = (event) => {
+      console.log('WebSocket closed:', event);
+      onClose(event);
+    };
     
     return ws;
   }
@@ -213,20 +276,28 @@ class DentalApiService {
   // Send audio data through WebSocket
   sendAudioData(ws: WebSocket, audioData: string): void {
     if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
+      const message = {
         type: 'audio',
         data: audioData
-      }));
+      };
+      console.log('Sending audio data through WebSocket');
+      ws.send(JSON.stringify(message));
+    } else {
+      console.warn('WebSocket not open, cannot send audio data');
     }
   }
 
   // Send text question through WebSocket
   sendTextQuestion(ws: WebSocket, question: string): void {
     if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
+      const message = {
         type: 'text_question',
         question: question
-      }));
+      };
+      console.log('Sending text question through WebSocket:', question);
+      ws.send(JSON.stringify(message));
+    } else {
+      console.warn('WebSocket not open, cannot send text question');
     }
   }
 
@@ -238,11 +309,26 @@ class DentalApiService {
         const base64String = reader.result as string;
         // Remove the data URL prefix (e.g., "data:audio/wav;base64,")
         const base64Data = base64String.split(',')[1];
+        console.log('Audio converted to base64, length:', base64Data.length);
         resolve(base64Data);
       };
-      reader.onerror = reject;
+      reader.onerror = () => {
+        console.error('Error converting audio to base64');
+        reject(new Error('Failed to convert audio to base64'));
+      };
       reader.readAsDataURL(audioBlob);
     });
+  }
+
+  // Test connection to backend
+  async testConnection(): Promise<boolean> {
+    try {
+      await this.healthCheck();
+      return true;
+    } catch (error) {
+      console.error('Backend connection test failed:', error);
+      return false;
+    }
   }
 }
 
