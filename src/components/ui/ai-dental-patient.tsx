@@ -1,29 +1,259 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Volume2, Play, Pause, Sparkles, Stethoscope, Bot, MessageCircle, Brain, User2, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AIRules } from "@/components/ui/ai-rules";
 
+// Extend the Window interface for speech recognition types
+// Add minimal SpeechRecognition type for TypeScript
+type SpeechRecognition = any;
+
+declare global {
+  interface Window {
+    webkitSpeechRecognition?: typeof SpeechRecognition;
+    SpeechRecognition?: typeof SpeechRecognition;
+  }
+}
+
+interface PatientInfo {
+  id: string;
+  age: number;
+  gender: string;
+  complexity: string;
+  description: string;
+  name: string;
+  voice: string;
+}
+
+interface QuestionResponse {
+  patient_name: string;
+  answer: string;
+  question_index: number;
+  total_questions: number;
+  retry_count: number;
+  max_retries: number;
+}
+
+interface SessionStatus {
+  patient_id: string;
+  patient_name: string;
+  current_question_index: number;
+  total_questions: number;
+  completed: boolean;
+}
+
+class DentalApiService {
+  private baseUrl = 'http://localhost:8000';
+
+  async getPatients(): Promise<PatientInfo[]> {
+    const response = await fetch(`${this.baseUrl}/api/patients`);
+    if (!response.ok) throw new Error('Failed to fetch patients');
+    return response.json();
+  }
+
+  async createSession(patientId: string) {
+    const response = await fetch(`${this.baseUrl}/api/sessions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patient_id: patientId }),
+    });
+    if (!response.ok) throw new Error('Failed to create session');
+    return response.json();
+  }
+
+  async askQuestion(patientId: string, question: string): Promise<QuestionResponse> {
+    const response = await fetch(`${this.baseUrl}/api/ask`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patient_id: patientId, question }),
+    });
+    if (!response.ok) throw new Error('Failed to ask question');
+    return response.json();
+  }
+
+  async getSessionStatus(patientId: string): Promise<SessionStatus> {
+    const response = await fetch(`${this.baseUrl}/api/sessions/${patientId}`);
+    if (!response.ok) throw new Error('Failed to get session status');
+    return response.json();
+  }
+}
+
+const apiService = new DentalApiService();
+
 export function AIDentalPatient() {
   const [isListening, setIsListening] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [conversationStarted, setConversationStarted] = useState(false);
   const [patientMood, setPatientMood] = useState<'calm' | 'anxious' | 'happy'>('calm');
+  const [patients, setPatients] = useState<PatientInfo[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<string>("");
+  const [sessionActive, setSessionActive] = useState(false);
+  const [sessionStatus, setSessionStatus] = useState<SessionStatus | null>(null);
+  const [currentQuestion, setCurrentQuestion] = useState<string>("");
 
-  const handleStartConversation = () => {
-    setConversationStarted(true);
-    setIsPlaying(true);
-    setPatientMood('happy');
-    setTimeout(() => setIsPlaying(false), 3000);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    loadPatients();
+    initializeSpeechRecognition();
+  }, []);
+
+  const loadPatients = async () => {
+    try {
+      setLoading(true);
+      const patientsData = await apiService.getPatients();
+      setPatients(patientsData);
+    } catch (err) {
+      setError('Failed to load patients');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStartConversation = async () => {
+    if (!selectedPatient) {
+      // Auto-select first patient if none selected
+      if (patients.length > 0) {
+        setSelectedPatient(patients[0].id);
+        await createSession(patients[0].id);
+      } else {
+        setError('No patients available');
+        return;
+      }
+    } else {
+      await createSession(selectedPatient);
+    }
+  };
+
+  const createSession = async (patientId: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const sessionData = await apiService.createSession(patientId);
+      setSessionActive(true);
+      setConversationStarted(true);
+      setSuccess('Session created successfully');
+      
+      // Get initial session status
+      const status = await apiService.getSessionStatus(patientId);
+      setSessionStatus(status);
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create session');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const initializeSpeechRecognition = () => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setCurrentQuestion(transcript);
+        setIsListening(false);
+        // Automatically ask the question when speech is recognized
+        askQuestionWithText(transcript);
+      };
+
+      recognitionRef.current.onerror = () => {
+        setIsListening(false);
+        setError("Speech recognition failed");
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+    }
+  };
+
+  const askQuestionWithText = async (questionText: string) => {
+    if (!questionText.trim() || !selectedPatient || !sessionActive) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await apiService.askQuestion(selectedPatient, questionText);
+      
+      // Update session status
+      const status = await apiService.getSessionStatus(selectedPatient);
+      setSessionStatus(status);
+      
+      // Play response
+      playResponse(response.answer);
+      
+      setCurrentQuestion('');
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to ask question');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const playResponse = (text: string) => {
+    if ('speechSynthesis' in window) {
+      setIsPlaying(true);
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.onend = () => setIsPlaying(false);
+      utterance.onerror = () => setIsPlaying(false);
+      speechSynthesis.speak(utterance);
+    }
   };
 
   const toggleListening = () => {
-    setIsListening(!isListening);
-    if (!isListening) {
-      setPatientMood('calm');
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      if (recognitionRef.current) {
+        recognitionRef.current.start();
+        setIsListening(true);
+        setError(null);
+      } else {
+        setError("Speech recognition not supported");
+      }
     }
   };
+
+  const stopPlaying = () => {
+    if ('speechSynthesis' in window) {
+      speechSynthesis.cancel();
+      setIsPlaying(false);
+    }
+  };
+
+  const resetSession = () => {
+    setSessionActive(false);
+    setSessionStatus(null);
+    setError(null);
+    setSuccess(null);
+    setIsListening(false);
+    setIsPlaying(false);
+    setConversationStarted(false);
+    setCurrentQuestion('');
+    
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+    if ('speechSynthesis' in window) {
+      speechSynthesis.cancel();
+    }
+  };
+
+  const selectedPatientInfo = patients.find(p => p.id === selectedPatient);
 
   const getMoodColor = () => {
     switch (patientMood) {
@@ -129,6 +359,18 @@ export function AIDentalPatient() {
           </CardHeader>
 
           <CardContent className="relative z-10 space-y-4">
+            {/* Error/Success Messages */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-sm">
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-md text-sm">
+                {success}
+              </div>
+            )}
+
             <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg p-4 border border-teal-100/50 backdrop-blur-sm">
               <div className="text-center space-y-3">
                 <p className="text-gray-700 text-sm leading-relaxed font-medium">
@@ -158,16 +400,18 @@ export function AIDentalPatient() {
               {!conversationStarted ? (
                 <Button 
                   onClick={handleStartConversation}
+                  disabled={loading}
                   className="w-full bg-gradient-to-r from-teal-600 via-teal-700 to-cyan-600 hover:from-teal-700 hover:via-teal-800 hover:to-cyan-700 text-white font-semibold py-3 px-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2"
                 >
                   <Play className="h-4 w-4" />
-                  <span>Begin Patient Interview</span>
+                  <span>{loading ? 'Starting...' : 'Begin Patient Interview'}</span>
                 </Button>
               ) : (
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <Button
                       onClick={toggleListening}
+                      disabled={loading}
                       variant={isListening ? "default" : "outline"}
                       className={`py-3 px-3 rounded-lg font-semibold transition-all duration-300 text-sm ${
                         isListening
@@ -179,7 +423,7 @@ export function AIDentalPatient() {
                     </Button>
 
                     <Button
-                      onClick={() => setIsPlaying(!isPlaying)}
+                      onClick={stopPlaying}
                       variant="outline"
                       className="py-3 px-3 rounded-lg font-semibold border-2 border-teal-300 hover:border-teal-400 text-teal-700 hover:bg-teal-50 transition-all duration-300 text-sm"
                     >
@@ -197,14 +441,17 @@ export function AIDentalPatient() {
             </div>
 
             {/* Professional Progress Indicator */}
-            {conversationStarted && (
+            {conversationStarted && sessionStatus && (
               <div className="mt-4">
                 <div className="h-1 bg-teal-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-teal-400 via-cyan-400 to-blue-400 rounded-full animate-pulse"></div>
+                  <div 
+                    className="h-full bg-gradient-to-r from-teal-400 via-cyan-400 to-blue-400 rounded-full transition-all duration-300"
+                    style={{ width: `${((sessionStatus.current_question_index) / sessionStatus.total_questions) * 100}%` }}
+                  ></div>
                 </div>
                 <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>Interview Progress</span>
-                  <span>Active Session</span>
+                  <span>Question {sessionStatus.current_question_index + 1}/{sessionStatus.total_questions}</span>
+                  <span>{sessionStatus.completed ? 'Completed' : 'Active Session'}</span>
                 </div>
               </div>
             )}

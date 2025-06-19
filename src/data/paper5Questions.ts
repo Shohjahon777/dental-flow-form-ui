@@ -87,14 +87,14 @@ export interface TreatmentPlan {
 export interface Paper5FormData {
   patientId?: string;
   finalDiagnosis: string;
-  diagnosisJustification: string;
-  treatmentPlan: string;
-  additionalTreatments?: TreatmentPlan[];
-  dateOfDiagnosis: Date | null;
+  // diagnosisJustification: string;
+  // treatmentPlan: string;
+  // additionalTreatments?: TreatmentPlan[];
+  // dateOfDiagnosis: Date | null;
   followUpDate?: Date | null;
   referralRequired?: boolean;
   referralSpecialty?: string;
-  prognosis: 'excellent' | 'good' | 'fair' | 'poor';
+  // prognosis: 'excellent' | 'good' | 'fair' | 'poor';
   riskFactors?: string[];
   preventiveMeasures?: string;
   patientEducation?: string;

@@ -10,12 +10,13 @@ import { BemorLogo } from '@/components/ui/bemor-logo';
 import { GuidelinesButton } from '@/components/ui/guidelines-button';
 import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
 import { useOnboarding } from '@/hooks/useOnboarding';
+import axios from 'axios';
 
-interface StudentInfo {
-  studentId: string;
-  name: string;
-  email: string;
-}
+// interface StudentInfo {
+//   studentId: string;
+//   name: string;
+//   email: string;
+// }
 
 interface Patient {
   id: string;
@@ -39,13 +40,16 @@ interface Patient {
 
 const PatientSelectionPage = () => {
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null);
-  const [studentInfo, setStudentInfo] = useState<StudentInfo | null>(null);
-  const [patients, setPatients] = useState<Patient[]>([]);
+  // const [studentInfo, setStudentInfo] = useState<StudentInfo | null>(null);
+  // const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { showTour, completeTour, skipTour } = useOnboarding();
+  const [patients, setPatients] = useState<Patient[]>([]);
+
+  const aiUri: string = import.meta.env.VITE_AI_URI;
 
   // Default patients (will be replaced by API call)
   const defaultPatients: Patient[] = [
@@ -90,17 +94,18 @@ const PatientSelectionPage = () => {
   ];
 
   useEffect(() => {
-    // Simulate API call to fetch patients
     const fetchPatients = async () => {
       try {
         setLoading(true);
         // TODO: Replace with actual API call
         // const response = await fetch('/api/patients');
         // const data = await response.json();
+
+        const response = await axios.get(`http://localhost:8000/api/patients`)
         
-        // Simulate loading delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setPatients(defaultPatients);
+        const data= response.data;
+        console.log("Fetched patients:", data);
+        setPatients(data);
       } catch (error) {
         toast({
           title: "Error",
@@ -116,31 +121,45 @@ const PatientSelectionPage = () => {
     fetchPatients();
   }, []);
 
-  const handleStudentInfoSubmit = (info: StudentInfo) => {
-    setStudentInfo(info);
-  };
+  // const handleStudentInfoSubmit = (info: StudentInfo) => {
+  //   setStudentInfo(info);
+  // };
 
-  const handleProceed = () => {
-    if (!selectedPatient) {
-      toast({
-        title: "Patient not selected",
-        description: "Please select a patient to continue.",
-        variant: "destructive",
-      });
-      return;
-    }
+  const handleProceed = async () => {
+  if (!selectedPatient) {
+    toast({
+      title: "Patient not selected",
+      description: "Please select a patient to continue.",
+      variant: "destructive",
+    });
+    return;
+  }
 
-    if (!studentInfo) {
-      toast({
-        title: "Student information required",
-        description: "Please complete your student information first.",
-        variant: "destructive",
-      });
-      return;
-    }
+  try {
+    const response = await axios.post('http://localhost:8000/api/sessions', {
+      patient_id: selectedPatient,
+    });
+
+    console.log("POST request response:", response.data);
+
+    toast({
+      title: "Session created",
+      description: "Session created successfully.",
+      variant: "default",
+    });
 
     navigate(`/form/${selectedPatient}`);
-  };
+  } catch (error) {
+    console.error("POST request error:", error);
+
+    toast({
+      title: "Error creating session",
+      description: error.response?.data?.message || "An unexpected error occurred.",
+      variant: "destructive",
+    });
+  }
+};
+
 
   if (loading) {
     return (
@@ -195,15 +214,15 @@ const PatientSelectionPage = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Patient Assessment Setup</h1>
           <p className="text-gray-600">
-            Complete your information and select a patient to begin the medical and dental history assessment.
+            Complete your information and select a patient to begin the dental and medical   history assessment.
           </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Student Information */}
-          <div className="lg:col-span-1" data-tour="student-info">
+          {/* <div className="lg:col-span-1" data-tour="student-info">
             <StudentInfoInput onSubmit={handleStudentInfoSubmit} />
-          </div>
+          </div> */}
 
           {/* Right Column - Patient Selection */}
           <div className="lg:col-span-2 space-y-6">
@@ -219,7 +238,7 @@ const PatientSelectionPage = () => {
                   className={`cursor-pointer transition-all duration-200 shadow-lg border-2 ${
                     selectedPatient === patient.id 
                       ? 'border-teal-500 bg-teal-50 shadow-xl scale-105' 
-                      : `${patient.color} hover:shadow-xl hover:scale-102`
+                      : `bg-teal-50 border-teal-200 hover:bg-teal-100 hover:shadow-xl hover:scale-102`
                   }`}
                   onClick={() => setSelectedPatient(patient.id)}
                 >
@@ -227,7 +246,7 @@ const PatientSelectionPage = () => {
                     <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
                       selectedPatient === patient.id 
                         ? 'bg-teal-500 text-white' 
-                        : 'bg-white border-2 border-teal-300 text-teal-600'
+                        : ' border-2 border-teal-300 text-teal-600'
                     }`}>
                       <User className="w-8 h-8" />
                     </div>
@@ -263,7 +282,7 @@ const PatientSelectionPage = () => {
               
               <Button 
                 onClick={handleProceed}
-                disabled={!selectedPatient || !studentInfo}
+                disabled={!selectedPatient}
                 className="dental-button-primary px-8"
                 data-tour="start-assessment"
               >
