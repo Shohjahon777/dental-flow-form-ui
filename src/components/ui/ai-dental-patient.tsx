@@ -1,12 +1,14 @@
+
 import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Volume2, Play, Pause, Sparkles, Stethoscope, Bot, MessageCircle, Brain, User2, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AIRules } from "@/components/ui/ai-rules";
+import { dentalApiService, PatientInfo, SessionStatus, QuestionResponse, WebSocketMessage } from "@/api/dentalService";
+import { toast } from "sonner";
 
 // Extend the Window interface for speech recognition types
-// Add minimal SpeechRecognition type for TypeScript
 type SpeechRecognition = any;
 
 declare global {
@@ -15,71 +17,6 @@ declare global {
     SpeechRecognition?: typeof SpeechRecognition;
   }
 }
-
-interface PatientInfo {
-  id: string;
-  age: number;
-  gender: string;
-  complexity: string;
-  description: string;
-  name: string;
-  voice: string;
-}
-
-interface QuestionResponse {
-  patient_name: string;
-  answer: string;
-  question_index: number;
-  total_questions: number;
-  retry_count: number;
-  max_retries: number;
-}
-
-interface SessionStatus {
-  patient_id: string;
-  patient_name: string;
-  current_question_index: number;
-  total_questions: number;
-  completed: boolean;
-}
-
-class DentalApiService {
-  private baseUrl = 'http://localhost:8000';
-
-  async getPatients(): Promise<PatientInfo[]> {
-    const response = await fetch(`${this.baseUrl}/api/patients`);
-    if (!response.ok) throw new Error('Failed to fetch patients');
-    return response.json();
-  }
-
-  async createSession(patientId: string) {
-    const response = await fetch(`${this.baseUrl}/api/sessions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ patient_id: patientId }),
-    });
-    if (!response.ok) throw new Error('Failed to create session');
-    return response.json();
-  }
-
-  async askQuestion(patientId: string, question: string): Promise<QuestionResponse> {
-    const response = await fetch(`${this.baseUrl}/api/ask`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ patient_id: patientId, question }),
-    });
-    if (!response.ok) throw new Error('Failed to ask question');
-    return response.json();
-  }
-
-  async getSessionStatus(patientId: string): Promise<SessionStatus> {
-    const response = await fetch(`${this.baseUrl}/api/sessions/${patientId}`);
-    if (!response.ok) throw new Error('Failed to get session status');
-    return response.json();
-  }
-}
-
-const apiService = new DentalApiService();
 
 export function AIDentalPatient() {
   const [isListening, setIsListening] = useState(false);
@@ -91,25 +28,51 @@ export function AIDentalPatient() {
   const [sessionActive, setSessionActive] = useState(false);
   const [sessionStatus, setSessionStatus] = useState<SessionStatus | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<string>("");
+  const [lastResponse, setLastResponse] = useState<string>("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const recognitionRef = useRef<any>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
     loadPatients();
     initializeSpeechRecognition();
+    return () => {
+      cleanup();
+    };
   }, []);
+
+  const cleanup = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+    if (wsRef.current) {
+      wsRef.current.close();
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    if ('speechSynthesis' in window) {
+      speechSynthesis.cancel();
+    }
+  };
 
   const loadPatients = async () => {
     try {
       setLoading(true);
-      const patientsData = await apiService.getPatients();
+      const patientsData = await dentalApiService.getPatients();
       setPatients(patientsData);
+      if (patientsData.length > 0) {
+        setSelectedPatient(patientsData[0].id);
+      }
     } catch (err) {
       setError('Failed to load patients');
+      toast.error('Failed to load patients');
     } finally {
       setLoading(false);
     }
@@ -117,17 +80,10 @@ export function AIDentalPatient() {
 
   const handleStartConversation = async () => {
     if (!selectedPatient) {
-      // Auto-select first patient if none selected
-      if (patients.length > 0) {
-        setSelectedPatient(patients[0].id);
-        await createSession(patients[0].id);
-      } else {
-        setError('No patients available');
-        return;
-      }
-    } else {
-      await createSession(selectedPatient);
+      setError('No patient selected');
+      return;
     }
+    await createSession(selectedPatient);
   };
 
   const createSession = async (patientId: string) => {
@@ -135,19 +91,92 @@ export function AIDentalPatient() {
       setLoading(true);
       setError(null);
       
-      const sessionData = await apiService.createSession(patientId);
+      const sessionData = await dentalApiService.createSession(patientId);
       setSessionActive(true);
       setConversationStarted(true);
-      setSuccess('Session created successfully');
+      setSuccess(`Session created for ${sessionData.patient_name}`);
+      toast.success(`Session started with ${sessionData.patient_name}`);
       
       // Get initial session status
-      const status = await apiService.getSessionStatus(patientId);
+      const status = await dentalApiService.getSessionStatus(patientId);
       setSessionStatus(status);
+
+      // Initialize WebSocket connection
+      initializeWebSocket(patientId);
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create session');
+      toast.error('Failed to create session');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const initializeWebSocket = (patientId: string) => {
+    try {
+      wsRef.current = dentalApiService.connectWebSocket(
+        patientId,
+        handleWebSocketMessage,
+        handleWebSocketError,
+        handleWebSocketClose
+      );
+    } catch (err) {
+      console.error('Failed to initialize WebSocket:', err);
+      setError('Failed to connect to voice AI');
+    }
+  };
+
+  const handleWebSocketMessage = (message: WebSocketMessage) => {
+    console.log('WebSocket message received:', message);
+    
+    switch (message.type) {
+      case 'answer':
+        if (message.answer) {
+          setLastResponse(message.answer);
+          playResponse(message.answer);
+          updateMoodFromResponse(message.answer);
+        }
+        break;
+      case 'transcription':
+        if (message.text) {
+          setCurrentQuestion(message.text);
+        }
+        break;
+      case 'status':
+        if (message.message) {
+          toast.info(message.message);
+        }
+        break;
+      case 'error':
+        if (message.message) {
+          setError(message.message);
+          toast.error(message.message);
+        }
+        break;
+    }
+  };
+
+  const handleWebSocketError = (error: Event) => {
+    console.error('WebSocket error:', error);
+    setError('Voice AI connection error');
+    toast.error('Voice AI connection error');
+  };
+
+  const handleWebSocketClose = (event: CloseEvent) => {
+    console.log('WebSocket closed:', event);
+    if (sessionActive) {
+      toast.info('Voice AI connection closed');
+    }
+  };
+
+  const updateMoodFromResponse = (response: string) => {
+    const lowerResponse = response.toLowerCase();
+    if (lowerResponse.includes('pain') || lowerResponse.includes('hurt') || lowerResponse.includes('worried')) {
+      setPatientMood('anxious');
+    } else if (lowerResponse.includes('good') || lowerResponse.includes('fine') || lowerResponse.includes('better')) {
+      setPatientMood('happy');
+    } else {
+      setPatientMood('calm');
     }
   };
 
@@ -163,13 +192,14 @@ export function AIDentalPatient() {
         const transcript = event.results[0][0].transcript;
         setCurrentQuestion(transcript);
         setIsListening(false);
-        // Automatically ask the question when speech is recognized
-        askQuestionWithText(transcript);
+        // Send question via WebSocket or API
+        sendQuestion(transcript);
       };
 
-      recognitionRef.current.onerror = () => {
+      recognitionRef.current.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
         setIsListening(false);
-        setError("Speech recognition failed");
+        setError("Speech recognition failed: " + event.error);
       };
 
       recognitionRef.current.onend = () => {
@@ -178,28 +208,99 @@ export function AIDentalPatient() {
     }
   };
 
-  const askQuestionWithText = async (questionText: string) => {
+  const sendQuestion = async (questionText: string) => {
     if (!questionText.trim() || !selectedPatient || !sessionActive) return;
 
     try {
       setLoading(true);
       setError(null);
       
-      const response = await apiService.askQuestion(selectedPatient, questionText);
-      
-      // Update session status
-      const status = await apiService.getSessionStatus(selectedPatient);
-      setSessionStatus(status);
-      
-      // Play response
-      playResponse(response.answer);
+      // Try WebSocket first, fallback to HTTP API
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        dentalApiService.sendTextQuestion(wsRef.current, questionText);
+      } else {
+        // Fallback to HTTP API
+        const response = await dentalApiService.askQuestion(selectedPatient, questionText);
+        setLastResponse(response.answer);
+        playResponse(response.answer);
+        updateMoodFromResponse(response.answer);
+        
+        // Update session status
+        const status = await dentalApiService.getSessionStatus(selectedPatient);
+        setSessionStatus(status);
+      }
       
       setCurrentQuestion('');
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to ask question');
+      toast.error('Failed to ask question');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const startAudioRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorderRef.current = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data);
+      };
+
+      mediaRecorderRef.current.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          try {
+            const base64Audio = await dentalApiService.audioToBase64(audioBlob);
+            dentalApiService.sendAudioData(wsRef.current, base64Audio);
+          } catch (err) {
+            console.error('Failed to send audio:', err);
+            setError('Failed to send audio');
+          }
+        }
+        
+        // Stop all tracks
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorderRef.current.start();
+      setIsListening(true);
+    } catch (err) {
+      console.error('Failed to start audio recording:', err);
+      setError('Failed to access microphone');
+    }
+  };
+
+  const stopAudioRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsListening(false);
+  };
+
+  const toggleListening = () => {
+    if (isListening) {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        stopAudioRecording();
+      } else if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
+    } else {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        // Use audio recording for WebSocket
+        startAudioRecording();
+      } else if (recognitionRef.current) {
+        // Use speech recognition as fallback
+        recognitionRef.current.start();
+        setIsListening(true);
+        setError(null);
+      } else {
+        setError("Speech recognition not supported");
+      }
     }
   };
 
@@ -207,24 +308,25 @@ export function AIDentalPatient() {
     if ('speechSynthesis' in window) {
       setIsPlaying(true);
       const utterance = new SpeechSynthesisUtterance(text);
+      
+      // Try to use a more natural voice
+      const voices = speechSynthesis.getVoices();
+      const preferredVoice = voices.find(voice => 
+        voice.name.includes('Neural') || 
+        voice.name.includes('Premium') || 
+        voice.quality === 'enhanced'
+      );
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
+      
+      utterance.rate = 0.9;
+      utterance.pitch = 1.0;
+      utterance.volume = 0.8;
+      
       utterance.onend = () => setIsPlaying(false);
       utterance.onerror = () => setIsPlaying(false);
       speechSynthesis.speak(utterance);
-    }
-  };
-
-  const toggleListening = () => {
-    if (isListening) {
-      recognitionRef.current?.stop();
-      setIsListening(false);
-    } else {
-      if (recognitionRef.current) {
-        recognitionRef.current.start();
-        setIsListening(true);
-        setError(null);
-      } else {
-        setError("Speech recognition not supported");
-      }
     }
   };
 
@@ -235,7 +337,15 @@ export function AIDentalPatient() {
     }
   };
 
-  const resetSession = () => {
+  const resetSession = async () => {
+    try {
+      if (selectedPatient && sessionActive) {
+        await dentalApiService.deleteSession(selectedPatient);
+      }
+    } catch (err) {
+      console.error('Failed to delete session:', err);
+    }
+    
     setSessionActive(false);
     setSessionStatus(null);
     setError(null);
@@ -244,13 +354,10 @@ export function AIDentalPatient() {
     setIsPlaying(false);
     setConversationStarted(false);
     setCurrentQuestion('');
+    setLastResponse('');
+    setPatientMood('calm');
     
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
-    if ('speechSynthesis' in window) {
-      speechSynthesis.cancel();
-    }
+    cleanup();
   };
 
   const selectedPatientInfo = patients.find(p => p.id === selectedPatient);
@@ -273,7 +380,6 @@ export function AIDentalPatient() {
             <div className="absolute -top-8 -right-8 w-32 h-32 bg-gradient-to-br from-teal-200/30 to-cyan-200/30 rounded-full blur-2xl animate-pulse"></div>
             <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gradient-to-br from-blue-200/30 to-teal-200/30 rounded-full blur-xl animate-pulse delay-1000"></div>
             
-            {/* Medical cross pattern */}
             <div className="absolute top-4 right-4 opacity-10">
               <div className="w-6 h-6 relative">
                 <div className="absolute inset-x-2 inset-y-0 bg-teal-600"></div>
@@ -285,7 +391,6 @@ export function AIDentalPatient() {
           <CardHeader className="text-center pb-6 relative z-10">
             {/* Professional AI Avatar */}
             <div className="relative mb-6 mx-auto w-24 h-24">
-              {/* Outer professional ring */}
               <div className={`absolute inset-0 rounded-full transition-all duration-1000 ${
                 isListening
                   ? `animate-ping bg-gradient-to-r ${getMoodColor()} opacity-75`
@@ -294,10 +399,8 @@ export function AIDentalPatient() {
                     : `bg-gradient-to-r ${getMoodColor()} opacity-40`
               }`}></div>
 
-              {/* Middle ring */}
               <div className="absolute inset-2 rounded-full bg-white/80 backdrop-blur-sm border border-teal-200/50"></div>
 
-              {/* Main avatar with medical theme */}
               <div className={`relative w-20 h-20 mx-auto mt-2 rounded-full bg-gradient-to-br from-white to-teal-50 flex items-center justify-center shadow-lg border-2 border-white transition-all duration-300 ${
                 isListening || isPlaying ? 'scale-110' : 'scale-100'
               }`}>
@@ -331,7 +434,6 @@ export function AIDentalPatient() {
                 AI Virtual Patient
               </CardTitle>
               
-              {/* Professional status indicators */}
               <div className="flex items-center justify-center space-x-2">
                 <Badge variant="outline" className={`text-xs font-medium transition-all duration-300 ${
                   isListening
@@ -355,6 +457,12 @@ export function AIDentalPatient() {
                   AI Powered
                 </Badge>
               </div>
+
+              {selectedPatientInfo && (
+                <div className="text-xs text-gray-600">
+                  Patient: {selectedPatientInfo.name} ({selectedPatientInfo.age}y, {selectedPatientInfo.gender})
+                </div>
+              )}
             </div>
           </CardHeader>
 
@@ -368,6 +476,20 @@ export function AIDentalPatient() {
             {success && (
               <div className="bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-md text-sm">
                 {success}
+              </div>
+            )}
+
+            {/* Current Question Display */}
+            {currentQuestion && (
+              <div className="bg-blue-50 border border-blue-200 text-blue-700 px-3 py-2 rounded-md text-sm">
+                <strong>Your question:</strong> {currentQuestion}
+              </div>
+            )}
+
+            {/* Last Response Display */}
+            {lastResponse && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-md text-sm">
+                <strong>Patient response:</strong> {lastResponse}
               </div>
             )}
 
@@ -395,7 +517,6 @@ export function AIDentalPatient() {
               </div>
             </div>
 
-            {/* Professional Control Panel */}
             <div className="space-y-3">
               {!conversationStarted ? (
                 <Button 
@@ -408,7 +529,7 @@ export function AIDentalPatient() {
                 </Button>
               ) : (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-2">
                     <Button
                       onClick={toggleListening}
                       disabled={loading}
@@ -429,6 +550,14 @@ export function AIDentalPatient() {
                     >
                       {isPlaying ? <Pause className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                     </Button>
+
+                    <Button
+                      onClick={resetSession}
+                      variant="outline"
+                      className="py-3 px-3 rounded-lg font-semibold border-2 border-red-300 hover:border-red-400 text-red-700 hover:bg-red-50 transition-all duration-300 text-sm"
+                    >
+                      Reset
+                    </Button>
                   </div>
 
                   <div className="text-center">
@@ -440,7 +569,7 @@ export function AIDentalPatient() {
               )}
             </div>
 
-            {/* Professional Progress Indicator */}
+            {/* Progress Indicator */}
             {conversationStarted && sessionStatus && (
               <div className="mt-4">
                 <div className="h-1 bg-teal-100 rounded-full overflow-hidden">
@@ -458,7 +587,6 @@ export function AIDentalPatient() {
           </CardContent>
         </Card>
 
-        {/* AI Rules Component */}
         <div className="max-w-md mx-auto">
           <AIRules />
         </div>
