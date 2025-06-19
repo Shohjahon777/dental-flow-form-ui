@@ -4,34 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AIRules } from "@/components/ui/ai-rules";
-import { dentalApiService, PatientInfo, SessionStatus, QuestionResponse, WebSocketMessage } from "@/api/dentalService";
+import { dentalApiService, PatientInfo, SessionStatus } from "@/api/dentalService";
 import { toast } from "sonner";
 
-// Extend the Window interface for speech recognition types
-interface SpeechRecognitionEvent extends Event {
-  results: SpeechRecognitionResultList;
-}
-
-interface SpeechRecognitionErrorEvent extends Event {
-  error: string;
-}
-
-interface SpeechRecognitionInterface extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  start(): void;
-  stop(): void;
-  onresult: ((event: SpeechRecognitionEvent) => void) | null;
-  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
-  onend: (() => void) | null;
-}
-
-declare global {
-  interface Window {
-    webkitSpeechRecognition?: new () => SpeechRecognitionInterface;
-    SpeechRecognition?: new () => SpeechRecognitionInterface;
-  }
+interface WebSocketMessage {
+  type: 'transcription' | 'answer' | 'error' | 'status';
+  text?: string;
+  answer?: string;
+  patient_name?: string;
+  question_index?: number;
+  total_questions?: number;
+  message?: string;
 }
 
 export function AIDentalPatient() {
@@ -46,12 +29,12 @@ export function AIDentalPatient() {
   const [currentQuestion, setCurrentQuestion] = useState<string>("");
   const [lastResponse, setLastResponse] = useState<string>("");
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
+  const [chatMessages, setChatMessages] = useState<Array<{sender: string, message: string, type: string}>>([]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const recognitionRef = useRef<SpeechRecognitionInterface | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -59,7 +42,6 @@ export function AIDentalPatient() {
   useEffect(() => {
     testBackendConnection();
     loadPatients();
-    initializeSpeechRecognition();
     return () => {
       cleanup();
     };
@@ -83,9 +65,6 @@ export function AIDentalPatient() {
   };
 
   const cleanup = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
     if (wsRef.current) {
       wsRef.current.close();
     }
@@ -142,15 +121,10 @@ export function AIDentalPatient() {
       setSuccess(`Session created for ${sessionData.patient_name}`);
       toast.success(`Session started with ${sessionData.patient_name}`);
       
-      // Get initial session status
-      try {
-        const status = await dentalApiService.getSessionStatus(patientId);
-        setSessionStatus(status);
-      } catch (statusError) {
-        console.warn('Could not get initial session status:', statusError);
-      }
-
-      // Initialize WebSocket connection
+      // Clear chat messages
+      setChatMessages([]);
+      
+      // Initialize WebSocket connection - match HTML implementation
       initializeWebSocket(patientId);
       
     } catch (err) {
@@ -165,12 +139,41 @@ export function AIDentalPatient() {
   const initializeWebSocket = (patientId: string) => {
     try {
       console.log('Initializing WebSocket for patient:', patientId);
-      wsRef.current = dentalApiService.connectWebSocket(
-        patientId,
-        handleWebSocketMessage,
-        handleWebSocketError,
-        handleWebSocketClose
-      );
+      
+      // Match the HTML WebSocket URL format exactly
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host.replace(':5173', ':8000')}/ws/${patientId}`;
+      console.log('WebSocket URL:', wsUrl);
+      
+      wsRef.current = new WebSocket(wsUrl);
+      
+      wsRef.current.onopen = () => {
+        console.log('WebSocket connected');
+        setConnectionStatus('connected');
+        toast.success('Voice AI connected');
+      };
+      
+      wsRef.current.onmessage = (event) => {
+        try {
+          const data: WebSocketMessage = JSON.parse(event.data);
+          console.log('WebSocket message received:', data);
+          handleWebSocketMessage(data);
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      };
+      
+      wsRef.current.onclose = () => {
+        console.log('WebSocket disconnected');
+        setConnectionStatus('disconnected');
+      };
+      
+      wsRef.current.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        setConnectionStatus('error');
+        setError('WebSocket connection error');
+      };
+      
     } catch (err) {
       console.error('Failed to initialize WebSocket:', err);
       setError('Failed to connect to voice AI. Audio features may not work.');
@@ -178,47 +181,54 @@ export function AIDentalPatient() {
     }
   };
 
-  const handleWebSocketMessage = (message: WebSocketMessage) => {
-    console.log('WebSocket message received:', message);
+  const handleWebSocketMessage = (data: WebSocketMessage) => {
+    console.log('Processing WebSocket message:', data);
     
-    switch (message.type) {
-      case 'answer':
-        if (message.answer) {
-          setLastResponse(message.answer);
-          playResponse(message.answer);
-          updateMoodFromResponse(message.answer);
-        }
-        break;
+    switch (data.type) {
       case 'transcription':
-        if (message.text) {
-          setCurrentQuestion(message.text);
+        if (data.text) {
+          addToChat('Student (Voice)', data.text, 'question');
+          setCurrentQuestion(data.text);
         }
         break;
-      case 'status':
-        if (message.message) {
-          toast.info(message.message);
+      case 'answer':
+        if (data.answer && data.patient_name) {
+          addToChat(data.patient_name, data.answer, 'answer');
+          setLastResponse(data.answer);
+          playResponse(data.answer);
+          updateMoodFromResponse(data.answer);
+          if (data.question_index !== undefined && data.total_questions !== undefined) {
+            updateSessionProgress(data.question_index, data.total_questions);
+          }
         }
         break;
       case 'error':
-        if (message.message) {
-          setError(message.message);
-          toast.error(message.message);
+        if (data.message) {
+          addToChat('System', data.message, 'error');
+          setError(data.message);
+          toast.error(data.message);
+        }
+        break;
+      case 'status':
+        if (data.message) {
+          console.log('Status update:', data.message);
+          toast.info(data.message);
         }
         break;
     }
   };
 
-  const handleWebSocketError = (error: Event) => {
-    console.error('WebSocket error:', error);
-    setError('Voice AI connection error. Switching to text-only mode.');
-    toast.error('Voice AI connection error');
+  const addToChat = (sender: string, message: string, type: string) => {
+    setChatMessages(prev => [...prev, { sender, message, type }]);
   };
 
-  const handleWebSocketClose = (event: CloseEvent) => {
-    console.log('WebSocket closed:', event);
-    if (sessionActive) {
-      toast.info('Voice AI connection closed. You can still type questions.');
-    }
+  const updateSessionProgress = (questionIndex: number, totalQuestions: number) => {
+    setSessionStatus(prev => prev ? {
+      ...prev,
+      current_question_index: questionIndex,
+      total_questions: totalQuestions,
+      completed: questionIndex >= totalQuestions
+    } : null);
   };
 
   const updateMoodFromResponse = (response: string) => {
@@ -232,36 +242,6 @@ export function AIDentalPatient() {
     }
   };
 
-  const initializeSpeechRecognition = () => {
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognitionConstructor = window.webkitSpeechRecognition || window.SpeechRecognition;
-      if (SpeechRecognitionConstructor) {
-        recognitionRef.current = new SpeechRecognitionConstructor();
-        recognitionRef.current.continuous = false;
-        recognitionRef.current.interimResults = false;
-        recognitionRef.current.lang = 'en-US';
-
-        recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
-          const transcript = event.results[0][0].transcript;
-          setCurrentQuestion(transcript);
-          setIsListening(false);
-          // Send question via WebSocket or API
-          sendQuestion(transcript);
-        };
-
-        recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
-          console.error('Speech recognition error:', event.error);
-          setIsListening(false);
-          setError("Speech recognition failed: " + event.error);
-        };
-
-        recognitionRef.current.onend = () => {
-          setIsListening(false);
-        };
-      }
-    }
-  };
-
   const sendQuestion = async (questionText: string) => {
     if (!questionText.trim() || !selectedPatient || !sessionActive) return;
 
@@ -270,25 +250,24 @@ export function AIDentalPatient() {
       setError(null);
       
       console.log('Sending question:', questionText);
+      addToChat('Student', questionText, 'question');
       
-      // Try WebSocket first, fallback to HTTP API
+      // Try WebSocket first - match HTML format exactly
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        dentalApiService.sendTextQuestion(wsRef.current, questionText);
+        const message = {
+          type: 'text_question',
+          question: questionText
+        };
+        console.log('Sending via WebSocket:', message);
+        wsRef.current.send(JSON.stringify(message));
       } else {
         console.log('WebSocket not available, using HTTP API');
         // Fallback to HTTP API
         const response = await dentalApiService.askQuestion(selectedPatient, questionText);
+        addToChat(response.patient_name, response.answer, 'answer');
         setLastResponse(response.answer);
         playResponse(response.answer);
         updateMoodFromResponse(response.answer);
-        
-        // Update session status
-        try {
-          const status = await dentalApiService.getSessionStatus(selectedPatient);
-          setSessionStatus(status);
-        } catch (statusError) {
-          console.warn('Could not update session status:', statusError);
-        }
       }
       
       setCurrentQuestion('');
@@ -304,25 +283,38 @@ export function AIDentalPatient() {
 
   const startAudioRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          sampleRate: 44100,
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true
+        } 
+      });
+      
+      // Configure MediaRecorder exactly like HTML implementation
+      const options: MediaRecorderOptions = {
+        mimeType: 'audio/webm;codecs=opus',
+        audioBitsPerSecond: 128000
+      };
+      
+      // Fallback to default if webm/opus not supported
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options.mimeType = 'audio/webm';
+      }
+      
+      mediaRecorderRef.current = new MediaRecorder(stream, options);
       audioChunksRef.current = [];
 
       mediaRecorderRef.current.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
       };
 
       mediaRecorderRef.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-          try {
-            const base64Audio = await dentalApiService.audioToBase64(audioBlob);
-            dentalApiService.sendAudioData(wsRef.current, base64Audio);
-          } catch (err) {
-            console.error('Failed to send audio:', err);
-            setError('Failed to send audio');
-          }
-        }
+        const audioBlob = new Blob(audioChunksRef.current, { type: options.mimeType });
+        await sendAudioToServer(audioBlob);
         
         // Stop all tracks
         stream.getTracks().forEach(track => track.stop());
@@ -330,6 +322,7 @@ export function AIDentalPatient() {
 
       mediaRecorderRef.current.start();
       setIsListening(true);
+      console.log('Audio recording started');
     } catch (err) {
       console.error('Failed to start audio recording:', err);
       setError('Failed to access microphone');
@@ -343,26 +336,35 @@ export function AIDentalPatient() {
     setIsListening(false);
   };
 
+  const sendAudioToServer = async (audioBlob: Blob) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      console.warn('WebSocket not connected');
+      return;
+    }
+    
+    try {
+      const reader = new FileReader();
+      reader.onload = function() {
+        const base64Audio = (reader.result as string).split(',')[1];
+        const message = {
+          type: 'audio',
+          data: base64Audio
+        };
+        console.log('Sending audio data via WebSocket');
+        wsRef.current?.send(JSON.stringify(message));
+      };
+      reader.readAsDataURL(audioBlob);
+    } catch (error) {
+      console.error('Error sending audio:', error);
+      setError('Error sending audio');
+    }
+  };
+
   const toggleListening = () => {
     if (isListening) {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        stopAudioRecording();
-      } else if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-      setIsListening(false);
+      stopAudioRecording();
     } else {
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        // Use audio recording for WebSocket
-        startAudioRecording();
-      } else if (recognitionRef.current) {
-        // Use speech recognition as fallback
-        recognitionRef.current.start();
-        setIsListening(true);
-        setError(null);
-      } else {
-        setError("Speech recognition not supported");
-      }
+      startAudioRecording();
     }
   };
 
@@ -417,6 +419,7 @@ export function AIDentalPatient() {
     setCurrentQuestion('');
     setLastResponse('');
     setPatientMood('calm');
+    setChatMessages([]);
     
     cleanup();
   };
@@ -557,17 +560,18 @@ export function AIDentalPatient() {
               </div>
             )}
 
-            {/* Current Question Display */}
-            {currentQuestion && (
-              <div className="bg-blue-50 border border-blue-200 text-blue-700 px-3 py-2 rounded-md text-sm">
-                <strong>Your question:</strong> {currentQuestion}
-              </div>
-            )}
-
-            {/* Last Response Display */}
-            {lastResponse && (
-              <div className="bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-md text-sm">
-                <strong>Patient response:</strong> {lastResponse}
+            {/* Chat Messages Display */}
+            {chatMessages.length > 0 && (
+              <div className="bg-white border border-gray-200 rounded-md max-h-48 overflow-y-auto p-3 space-y-2">
+                {chatMessages.map((msg, index) => (
+                  <div key={index} className={`text-sm p-2 rounded ${
+                    msg.type === 'question' ? 'bg-blue-50 text-blue-700' :
+                    msg.type === 'answer' ? 'bg-green-50 text-green-700' :
+                    'bg-red-50 text-red-700'
+                  }`}>
+                    <strong>{msg.sender}:</strong> {msg.message}
+                  </div>
+                ))}
               </div>
             )}
 
@@ -639,6 +643,25 @@ export function AIDentalPatient() {
                       className="py-3 px-3 rounded-lg font-semibold border-2 border-red-300 hover:border-red-400 text-red-700 hover:bg-red-50 transition-all duration-300 text-sm"
                     >
                       Reset
+                    </Button>
+                  </div>
+
+                  {/* Text Input for Questions */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={currentQuestion}
+                      onChange={(e) => setCurrentQuestion(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && sendQuestion(currentQuestion)}
+                      placeholder="Type your question here or use voice..."
+                      className="flex-1 px-3 py-2 border border-teal-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                    <Button
+                      onClick={() => sendQuestion(currentQuestion)}
+                      disabled={!currentQuestion.trim() || loading}
+                      className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm"
+                    >
+                      Ask
                     </Button>
                   </div>
 
