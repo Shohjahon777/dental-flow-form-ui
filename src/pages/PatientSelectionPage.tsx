@@ -1,9 +1,9 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { StudentInfoInput } from '@/components/ui/student-info-input';
 import { ArrowLeft, User, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { BemorLogo } from '@/components/ui/bemor-logo';
@@ -40,8 +40,6 @@ const PatientSelectionPage = () => {
   const { toast } = useToast();
   const { showTour, completeTour, skipTour } = useOnboarding();
   const [patients, setPatients] = useState<Patient[]>([]);
-
-  const aiUri: string = import.meta.env.VITE_AI_URI;
 
   // Default patients (will be replaced by API call)
   const defaultPatients: Patient[] = [
@@ -159,7 +157,8 @@ const PatientSelectionPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 relative">
+      {/* Guidelines Button - Fixed position with responsive positioning */}
       <GuidelinesButton />
       
       <OnboardingTour
@@ -186,7 +185,7 @@ const PatientSelectionPage = () => {
             </div>
             <BemorLogo size="sm" />
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">{user?.name}</span>
+              <span className="text-sm text-gray-600 hidden sm:inline">{user?.name}</span>
               <Button variant="outline" size="sm" onClick={logout} className="hover:bg-teal-50">
                 Logout
               </Button>
@@ -195,96 +194,94 @@ const PatientSelectionPage = () => {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
+      {/* Main Content - Centered layout */}
+      <main className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Patient Assessment Setup</h1>
           <p className="text-gray-600">
-            Complete your information and select a patient to begin the dental and medical history assessment.
+            Select a patient to begin the dental and medical history assessment.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Right Column - Patient Selection */}
-          <div className="lg:col-span-2 space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-              <Users className="w-6 h-6 mr-2 text-teal-600" />
-              Available Patients
-            </h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-tour="patient-cards">
-              {patients.map((patient) => (
-                <Card 
-                  key={patient.id}
-                  className={`cursor-pointer transition-all duration-200 shadow-lg border-2 ${
+        {/* Centered Patient Selection */}
+        <div className="flex flex-col items-center space-y-6">
+          <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+            <Users className="w-6 h-6 mr-2 text-teal-600" />
+            Available Patients
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl" data-tour="patient-cards">
+            {patients.map((patient) => (
+              <Card 
+                key={patient.id}
+                className={`cursor-pointer transition-all duration-200 shadow-lg border-2 ${
+                  selectedPatient === patient.id 
+                    ? 'border-teal-500 bg-teal-50 shadow-xl scale-105' 
+                    : `bg-teal-50 border-teal-200 hover:bg-teal-100 hover:shadow-xl hover:scale-102`
+                }`}
+                onClick={() => {
+                  console.log("Selecting patient:", patient.id, patient.name);
+                  setSelectedPatient(patient.id);
+                }}
+              >
+                <CardHeader className="text-center pb-4">
+                  <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
                     selectedPatient === patient.id 
-                      ? 'border-teal-500 bg-teal-50 shadow-xl scale-105' 
-                      : `bg-teal-50 border-teal-200 hover:bg-teal-100 hover:shadow-xl hover:scale-102`
-                  }`}
-                  onClick={() => {
-                    console.log("Selecting patient:", patient.id, patient.name);
-                    setSelectedPatient(patient.id);
-                  }}
-                >
-                  <CardHeader className="text-center pb-4">
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                      selectedPatient === patient.id 
-                        ? 'bg-teal-500 text-white' 
-                        : ' border-2 border-teal-300 text-teal-600'
-                    }`}>
-                      <User className="w-8 h-8" />
-                    </div>
-                    <CardTitle className="text-xl text-gray-900">{patient.name}</CardTitle>
-                    <CardDescription className="text-gray-600">
-                      {patient.age} • {patient.gender}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="text-center">
-                    <p className="text-sm text-gray-700 mb-3 leading-relaxed">{patient.description}</p>
-                    <div className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                      patient.complexity === 'High' 
-                        ? 'bg-orange-100 text-orange-800 border border-orange-200' 
-                        : 'bg-blue-100 text-blue-800 border border-blue-200'
-                    }`}>
-                      {patient.complexity} Complexity
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                      ? 'bg-teal-500 text-white' 
+                      : ' border-2 border-teal-300 text-teal-600'
+                  }`}>
+                    <User className="w-8 h-8" />
+                  </div>
+                  <CardTitle className="text-xl text-gray-900">{patient.name}</CardTitle>
+                  <CardDescription className="text-gray-600">
+                    {patient.age} • {patient.gender}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <p className="text-sm text-gray-700 mb-3 leading-relaxed">{patient.description}</p>
+                  <div className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                    patient.complexity === 'High' 
+                      ? 'bg-orange-100 text-orange-800 border border-orange-200' 
+                      : 'bg-blue-100 text-blue-800 border border-blue-200'
+                  }`}>
+                    {patient.complexity} Complexity
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
-            {/* Debug info */}
-            {selectedPatient && (
-              <div className="bg-blue-50 border border-blue-200 p-3 rounded-md">
-                <p className="text-sm text-blue-700">
-                  Selected Patient ID: {selectedPatient}
-                </p>
-                <p className="text-sm text-blue-700">
-                  Selected Patient Name: {patients.find(p => p.id === selectedPatient)?.name}
-                </p>
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="flex justify-between items-center bg-white rounded-lg p-6 shadow-lg border border-teal-100">
-              <Button 
-                variant="outline" 
-                onClick={() => navigate('/')}
-                className="text-gray-600 hover:bg-teal-50 border-teal-200"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
-              </Button>
-              
-              <Button 
-                onClick={handleProceed}
-                disabled={!selectedPatient}
-                className="dental-button-primary px-8"
-                data-tour="start-assessment"
-              >
-                Start Assessment
-              </Button>
+          {/* Debug info */}
+          {selectedPatient && (
+            <div className="bg-blue-50 border border-blue-200 p-3 rounded-md w-full max-w-2xl">
+              <p className="text-sm text-blue-700">
+                Selected Patient ID: {selectedPatient}
+              </p>
+              <p className="text-sm text-blue-700">
+                Selected Patient Name: {patients.find(p => p.id === selectedPatient)?.name}
+              </p>
             </div>
+          )}
+
+          {/* Action Buttons - Centered */}
+          <div className="flex justify-center items-center gap-4 bg-white rounded-lg p-6 shadow-lg border border-teal-100 w-full max-w-2xl">
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/')}
+              className="text-gray-600 hover:bg-teal-50 border-teal-200"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Dashboard
+            </Button>
+            
+            <Button 
+              onClick={handleProceed}
+              disabled={!selectedPatient}
+              className="dental-button-primary px-8"
+              data-tour="start-assessment"
+            >
+              Start Assessment
+            </Button>
           </div>
         </div>
       </main>

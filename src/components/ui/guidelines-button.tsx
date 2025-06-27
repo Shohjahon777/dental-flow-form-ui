@@ -37,10 +37,10 @@ export const GuidelinesButton: React.FC = () => {
         <Button
           variant="outline"
           size="sm"
-          className="fixed top-4 right-4 z-30 bg-white shadow-lg border-teal-200 hover:bg-teal-50"
+          className="fixed top-20 right-4 z-30 bg-white shadow-lg border-teal-200 hover:bg-teal-50 sm:top-4"
         >
           <Info className="w-4 h-4 mr-2" />
-          Guidelines
+          <span className="hidden sm:inline">Guidelines</span>
         </Button>
       </DialogTrigger>
       

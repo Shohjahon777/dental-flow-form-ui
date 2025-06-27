@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { AIRules } from "@/components/ui/ai-rules";
 import { dentalApiService, PatientInfo, SessionStatus } from "@/api/dentalService";
 import { toast } from "sonner";
+import { useVoiceRecognition } from "@/hooks/useVoiceRecognition";
 
 interface WebSocketMessage {
   type: 'transcription' | 'answer' | 'error' | 'status';
@@ -18,7 +19,6 @@ interface WebSocketMessage {
 }
 
 export function AIDentalPatient() {
-  const [isListening, setIsListening] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [conversationStarted, setConversationStarted] = useState(false);
   const [patientMood, setPatientMood] = useState<'calm' | 'anxious' | 'happy'>('calm');
@@ -34,48 +34,33 @@ export function AIDentalPatient() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [microphonePermission, setMicrophonePermission] = useState<'granted' | 'denied' | 'prompt'>('prompt');
 
   const wsRef = useRef<WebSocket | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const streamRef = useRef<MediaStream | null>(null);
+
+  const { 
+    isListening, 
+    isSupported: microphoneSupported, 
+    startListening, 
+    stopListening, 
+    cleanup: cleanupVoice 
+  } = useVoiceRecognition({
+    onTranscription: (text) => {
+      addToChat('Student (Voice)', text, 'question');
+      setCurrentQuestion(text);
+    },
+    onError: (errorMsg) => {
+      setError(errorMsg);
+      toast.error(errorMsg);
+    }
+  });
 
   useEffect(() => {
     testBackendConnection();
     loadPatients();
-    checkMicrophonePermission();
     return () => {
       cleanup();
     };
   }, []);
-
-  const checkMicrophonePermission = async () => {
-    try {
-      const permission = await navigator.permissions.query({ name: 'microphone' as PermissionName });
-      setMicrophonePermission(permission.state as 'granted' | 'denied' | 'prompt');
-      console.log('Microphone permission:', permission.state);
-    } catch (err) {
-      console.warn('Could not check microphone permission:', err);
-    }
-  };
-
-  const requestMicrophonePermission = async () => {
-    try {
-      console.log('Requesting microphone permission...');
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      setMicrophonePermission('granted');
-      console.log('Microphone permission granted');
-      // Stop the stream immediately as we just needed permission
-      stream.getTracks().forEach(track => track.stop());
-      return true;
-    } catch (err) {
-      console.error('Microphone permission denied:', err);
-      setMicrophonePermission('denied');
-      setError('Microphone access denied. Please enable microphone permissions in your browser settings.');
-      return false;
-    }
-  };
 
   const testBackendConnection = async () => {
     try {
@@ -98,12 +83,7 @@ export function AIDentalPatient() {
     if (wsRef.current) {
       wsRef.current.close();
     }
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-    }
+    cleanupVoice();
     if ('speechSynthesis' in window) {
       speechSynthesis.cancel();
     }
@@ -139,14 +119,6 @@ export function AIDentalPatient() {
       return;
     }
 
-    // Request microphone permission if not granted
-    if (microphonePermission !== 'granted') {
-      const granted = await requestMicrophonePermission();
-      if (!granted) {
-        return;
-      }
-    }
-    
     await createSession(selectedPatient);
   };
 
@@ -178,7 +150,6 @@ export function AIDentalPatient() {
     try {
       console.log('Initializing WebSocket for patient:', patientId);
       
-      // Use localhost:8000 directly for WebSocket
       const wsUrl = `ws://localhost:8000/ws/${patientId}`;
       console.log('WebSocket URL:', wsUrl);
       
@@ -316,131 +287,11 @@ export function AIDentalPatient() {
     }
   };
 
-  const startAudioRecording = async () => {
-    try {
-      console.log('Starting audio recording...');
-      
-      // Request microphone access with specific constraints
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          sampleRate: 16000, // Common rate for speech recognition
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        } 
-      });
-      
-      streamRef.current = stream;
-      console.log('Audio stream obtained:', stream.getAudioTracks());
-      
-      // Check supported MIME types
-      const mimeTypes = [
-        'audio/webm;codecs=opus',
-        'audio/webm',
-        'audio/wav',
-        'audio/mp4',
-        'audio/ogg;codecs=opus'
-      ];
-      
-      let selectedMimeType = '';
-      for (const mimeType of mimeTypes) {
-        if (MediaRecorder.isTypeSupported(mimeType)) {
-          selectedMimeType = mimeType;
-          console.log('Using MIME type:', mimeType);
-          break;
-        }
-      }
-      
-      if (!selectedMimeType) {
-        throw new Error('No supported audio format found');
-      }
-      
-      const options: MediaRecorderOptions = {
-        mimeType: selectedMimeType,
-        audioBitsPerSecond: 128000
-      };
-      
-      mediaRecorderRef.current = new MediaRecorder(stream, options);
-      audioChunksRef.current = [];
-
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        console.log('Audio data available:', event.data.size);
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorderRef.current.onstop = async () => {
-        console.log('Recording stopped, processing audio...');
-        const audioBlob = new Blob(audioChunksRef.current, { type: selectedMimeType });
-        console.log('Audio blob created:', audioBlob.size, 'bytes');
-        await sendAudioToServer(audioBlob);
-        
-        // Clean up stream
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach(track => track.stop());
-          streamRef.current = null;
-        }
-      };
-
-      mediaRecorderRef.current.start(1000); // Record in 1-second chunks
-      setIsListening(true);
-      console.log('Recording started successfully');
-      
-    } catch (err) {
-      console.error('Failed to start audio recording:', err);
-      setError(`Failed to access microphone: ${err.message}`);
-      toast.error('Microphone access failed');
-      setMicrophonePermission('denied');
-    }
-  };
-
-  const stopAudioRecording = () => {
-    console.log('Stopping audio recording...');
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
-    }
-    setIsListening(false);
-  };
-
-  const sendAudioToServer = async (audioBlob: Blob) => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      console.warn('WebSocket not connected');
-      setError('Voice connection lost. Please try again.');
-      return;
-    }
-    
-    try {
-      console.log('Converting audio to base64...');
-      const reader = new FileReader();
-      reader.onload = function() {
-        const base64Audio = (reader.result as string).split(',')[1];
-        const message = {
-          type: 'audio',
-          data: base64Audio
-        };
-        console.log('Sending audio data via WebSocket, size:', base64Audio.length);
-        wsRef.current?.send(JSON.stringify(message));
-        toast.success('Audio sent for processing');
-      };
-      reader.onerror = function() {
-        console.error('Error reading audio file');
-        setError('Error processing audio');
-      };
-      reader.readAsDataURL(audioBlob);
-    } catch (error) {
-      console.error('Error sending audio:', error);
-      setError('Error sending audio');
-      toast.error('Failed to send audio');
-    }
-  };
-
   const toggleListening = () => {
     if (isListening) {
-      stopAudioRecording();
+      stopListening();
     } else {
-      startAudioRecording();
+      startListening(selectedPatient);
     }
   };
 
@@ -489,7 +340,6 @@ export function AIDentalPatient() {
     setSessionStatus(null);
     setError(null);
     setSuccess(null);
-    setIsListening(false);
     setIsPlaying(false);
     setConversationStarted(false);
     setCurrentQuestion('');
@@ -617,10 +467,10 @@ export function AIDentalPatient() {
 
           <CardContent className="relative z-10 space-y-4">
             {/* Microphone Permission Warning */}
-            {microphonePermission === 'denied' && (
+            {!microphoneSupported && (
               <div className="bg-orange-50 border border-orange-200 text-orange-700 px-3 py-2 rounded-md text-sm flex items-center">
                 <AlertCircle className="w-4 h-4 mr-2" />
-                Microphone access denied. Please enable in browser settings for voice features.
+                Speech recognition not supported. Please use text input.
               </div>
             )}
 
@@ -702,7 +552,7 @@ export function AIDentalPatient() {
                   <div className="grid grid-cols-3 gap-2">
                     <Button
                       onClick={toggleListening}
-                      disabled={loading || microphonePermission === 'denied' || connectionStatus !== 'connected'}
+                      disabled={loading || !microphoneSupported || connectionStatus !== 'connected'}
                       variant={isListening ? "default" : "outline"}
                       className={`py-3 px-3 rounded-lg font-semibold transition-all duration-300 text-sm ${
                         isListening
@@ -758,9 +608,9 @@ export function AIDentalPatient() {
                         Voice features unavailable - text questions only
                       </p>
                     )}
-                    {microphonePermission === 'denied' && (
+                    {!microphoneSupported && (
                       <p className="text-xs text-orange-600 mt-1">
-                        Microphone access denied - text questions only
+                        Speech recognition not supported - text questions only
                       </p>
                     )}
                   </div>
