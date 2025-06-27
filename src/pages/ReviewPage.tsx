@@ -342,6 +342,21 @@ const ReviewPage = () => {
                     </div>
                   </div>
                 ))}
+                
+                {/* Clinical Images Section */}
+                <div className="mb-6">
+                  <h4 className="font-semibold text-gray-900 mb-3 text-lg">Clinical Images</h4>
+                  <div className="bg-white p-4 rounded-lg border border-gray-200">
+                    <img 
+                      src="/lovable-uploads/6064503a-3074-4027-8c65-bbc4af88cc05.png" 
+                      alt="Clinical preoperative presentation showing dental conditions"
+                      className="w-full max-w-2xl mx-auto rounded-lg shadow-sm"
+                    />
+                    <p className="text-sm text-gray-600 mt-2 text-center">
+                      Preoperative clinical presentation showing dental alignment and gingival condition
+                    </p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -370,6 +385,21 @@ const ReviewPage = () => {
                     </div>
                   </div>
                 ))}
+
+                {/* Radiographic Images Section */}
+                <div className="mb-6">
+                  <h4 className="font-semibold text-gray-900 mb-3 text-lg">Radiographic Images</h4>
+                  <div className="bg-white p-4 rounded-lg border border-gray-200">
+                    <img 
+                      src="/lovable-uploads/71a16a32-2394-4a25-9b8e-c0c9aa73b174.png" 
+                      alt="Bite-wing radiographs showing interproximal bone levels"
+                      className="w-full max-w-3xl mx-auto rounded-lg shadow-sm"
+                    />
+                    <p className="text-sm text-gray-600 mt-2 text-center">
+                      Bite-wing radiographs depicting the interproximal bone levels and dental structures
+                    </p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
