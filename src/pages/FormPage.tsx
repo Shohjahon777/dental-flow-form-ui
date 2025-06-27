@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -336,14 +337,34 @@ const FormPage = () => {
                     Clinical Examination
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-6">
                   <p className="text-gray-600 text-sm">
-                    This section will contain clinical examination forms and findings.
-                    Physical examination, oral examination, and clinical observations will be recorded here.
+                    Review the clinical images below to perform your examination and document findings.
+                    Use these images to assess dental alignment, gingival condition, and overall oral health.
                   </p>
+                  
+                  {/* Clinical Images Section */}
+                  <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                    <h4 className="font-semibold text-gray-900 mb-3 text-base">Clinical Images for Assessment</h4>
+                    <img 
+                      src="/lovable-uploads/6064503a-3074-4027-8c65-bbc4af88cc05.png" 
+                      alt="Clinical preoperative presentation showing dental conditions"
+                      className="w-full max-w-2xl mx-auto rounded-lg shadow-sm border border-gray-100"
+                    />
+                    <p className="text-sm text-gray-600 mt-3 text-center font-medium">
+                      Preoperative clinical presentation showing dental alignment and gingival condition
+                    </p>
+                    <div className="mt-4 p-3 bg-teal-50 rounded-lg border border-teal-200">
+                      <p className="text-sm text-teal-800">
+                        💡 <strong>Assessment Tip:</strong> Examine this image carefully for signs of dental caries, 
+                        gingival inflammation, plaque accumulation, and tooth alignment issues.
+                      </p>
+                    </div>
+                  </div>
+                  
                   <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
                     <p className="text-teal-800 text-sm font-medium">
-                      🚧 Clinical Examination forms are being developed and will be available soon.
+                      📋 Use the clinical image above to document your examination findings and proceed to Paper 4 for radiographic analysis.
                     </p>
                   </div>
                 </CardContent>
@@ -358,14 +379,34 @@ const FormPage = () => {
                     Investigations & Diagnostics
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-6">
                   <p className="text-gray-600 text-sm">
-                    Document diagnostic tests, radiographs, laboratory results, and other investigations.
-                    This section supports comprehensive diagnostic workup documentation.
+                    Analyze the radiographic images below to complete your diagnostic workup.
+                    These bite-wing radiographs will help you assess interproximal bone levels and identify any pathology.
                   </p>
-                  <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
-                    <p className="text-teal-800 text-sm font-medium">
-                      🚧 Investigation forms and diagnostic tools are being developed and will be available soon.
+                  
+                  {/* Radiographic Images Section */}
+                  <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                    <h4 className="font-semibold text-gray-900 mb-3 text-base">Radiographic Images for Analysis</h4>
+                    <img 
+                      src="/lovable-uploads/71a16a32-2394-4a25-9b8e-c0c9aa73b174.png" 
+                      alt="Bite-wing radiographs showing interproximal bone levels"
+                      className="w-full max-w-3xl mx-auto rounded-lg shadow-sm border border-gray-100"
+                    />
+                    <p className="text-sm text-gray-600 mt-3 text-center font-medium">
+                      Bite-wing radiographs depicting the interproximal bone levels and dental structures
+                    </p>
+                    <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="text-sm text-blue-800">
+                        🔍 <strong>Radiographic Analysis:</strong> Look for signs of caries, bone loss, 
+                        periodontal involvement, and any apical pathology in these radiographs.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <p className="text-blue-800 text-sm font-medium">
+                      📊 Complete your radiographic analysis and proceed to Paper 5 to formulate your final diagnosis based on clinical and radiographic findings.
                     </p>
                   </div>
                 </CardContent>
@@ -509,12 +550,25 @@ const FormPage = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-gray-600 text-sm">
-                This section will contain clinical examination forms and findings.
-                Physical examination, oral examination, and clinical observations will be recorded here.
+                Review the clinical images below to perform your examination and document findings.
               </p>
-              <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
-                <p className="text-teal-800 text-sm font-medium">
-                  🚧 Clinical Examination forms are being developed and will be available soon.
+              
+              {/* Clinical Images Section for Mobile */}
+              <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                <h4 className="font-semibold text-gray-900 mb-2 text-sm">Clinical Images</h4>
+                <img 
+                  src="/lovable-uploads/6064503a-3074-4027-8c65-bbc4af88cc05.png" 
+                  alt="Clinical preoperative presentation"
+                  className="w-full rounded-lg shadow-sm border border-gray-100"
+                />
+                <p className="text-xs text-gray-600 mt-2 text-center">
+                  Clinical presentation for assessment
+                </p>
+              </div>
+              
+              <div className="bg-teal-50 p-3 rounded-lg border border-teal-200">
+                <p className="text-teal-800 text-sm">
+                  📋 Use the clinical image to document examination findings.
                 </p>
               </div>
             </CardContent>
@@ -531,12 +585,25 @@ const FormPage = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-gray-600 text-sm">
-                Document diagnostic tests, radiographs, laboratory results, and other investigations.
-                This section supports comprehensive diagnostic workup documentation.
+                Analyze the radiographic images below for your diagnostic workup.
               </p>
-              <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
-                <p className="text-teal-800 text-sm font-medium">
-                  🚧 Investigation forms and diagnostic tools are being developed and will be available soon.
+              
+              {/* Radiographic Images Section for Mobile */}
+              <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                <h4 className="font-semibold text-gray-900 mb-2 text-sm">Radiographic Images</h4>
+                <img 
+                  src="/lovable-uploads/71a16a32-2394-4a25-9b8e-c0c9aa73b174.png" 
+                  alt="Bite-wing radiographs"
+                  className="w-full rounded-lg shadow-sm border border-gray-100"
+                />
+                <p className="text-xs text-gray-600 mt-2 text-center">
+                  Bite-wing radiographs for analysis
+                </p>
+              </div>
+              
+              <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                <p className="text-blue-800 text-sm">
+                  📊 Analyze radiographs for your final diagnosis.
                 </p>
               </div>
             </CardContent>
