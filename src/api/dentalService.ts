@@ -1,10 +1,11 @@
 
-import { PatientService } from '../services/patientService';
-import { SessionService } from '../services/sessionService';
-import { QuestionService } from '../services/questionService';
-import { HealthService } from '../services/healthService';
-import { WebSocketService } from '../services/websocketService';
-import { AudioUtils } from '../utils/audioUtils';
+import { PatientsService } from '../services/patients';
+import { SessionsService } from '../services/sessions';
+import { QuestionsService } from '../services/questions';
+import { HealthService } from '../services/health';
+import { WebSocketService } from '../services/websocket';
+import { AudioUtilities } from '../utils/audio';
+import { ApiClient } from '../services/apiClient';
 import { 
   PatientInfo, 
   SessionResponse, 
@@ -15,41 +16,43 @@ import {
 } from '../types/dental';
 
 class DentalApiService {
-  private patientService: PatientService;
-  private sessionService: SessionService;
-  private questionService: QuestionService;
+  private patientsService: PatientsService;
+  private sessionsService: SessionsService;
+  private questionsService: QuestionsService;
   private healthService: HealthService;
   private websocketService: WebSocketService;
+  private apiClient: ApiClient;
 
   constructor() {
-    this.patientService = new PatientService();
-    this.sessionService = new SessionService();
-    this.questionService = new QuestionService();
+    this.apiClient = new ApiClient();
+    this.patientsService = new PatientsService();
+    this.sessionsService = new SessionsService();
+    this.questionsService = new QuestionsService();
     this.healthService = new HealthService();
-    this.websocketService = new WebSocketService();
+    this.websocketService = new WebSocketService(this.apiClient.getWebSocketUrl());
   }
 
   // Patient methods
   async getPatients(): Promise<PatientInfo[]> {
-    return this.patientService.getPatients();
+    return this.patientsService.getPatients();
   }
 
   // Session methods
   async createSession(patientId: string): Promise<SessionResponse> {
-    return this.sessionService.createSession(patientId);
+    return this.sessionsService.createSession(patientId);
   }
 
   async getSessionStatus(patientId: string): Promise<SessionStatus> {
-    return this.sessionService.getSessionStatus(patientId);
+    return this.sessionsService.getSessionStatus(patientId);
   }
 
   async deleteSession(patientId: string): Promise<{ message: string }> {
-    return this.sessionService.deleteSession(patientId);
+    return this.sessionsService.deleteSession(patientId);
   }
 
   // Question methods
   async askQuestion(patientId: string, question: string): Promise<QuestionResponse> {
-    return this.questionService.askQuestion(patientId, question);
+    return this.questionsService.askQuestion(patientId, question);
   }
 
   // Health methods
@@ -77,7 +80,7 @@ class DentalApiService {
 
   // Audio utility methods
   async audioToBase64(audioBlob: Blob): Promise<string> {
-    return AudioUtils.audioToBase64(audioBlob);
+    return AudioUtilities.audioToBase64(audioBlob);
   }
 
   // Test connection

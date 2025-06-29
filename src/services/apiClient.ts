@@ -1,5 +1,5 @@
 
-export class BaseApiService {
+export class ApiClient {
   protected baseUrl: string;
   protected wsUrl: string;
 
@@ -8,7 +8,7 @@ export class BaseApiService {
     this.baseUrl = apiUri;
     this.wsUrl = this.baseUrl.replace('http', 'ws').replace('https', 'wss').replace('/api', '');
     
-    console.log('Base API Service initialized:', {
+    console.log('API Client initialized:', {
       baseUrl: this.baseUrl,
       wsUrl: this.wsUrl
     });
@@ -53,5 +53,9 @@ export class BaseApiService {
       console.error('Backend connection test failed:', error);
       return false;
     }
+  }
+
+  getWebSocketUrl(): string {
+    return this.wsUrl;
   }
 }

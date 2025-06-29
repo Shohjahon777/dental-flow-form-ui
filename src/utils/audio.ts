@@ -1,5 +1,5 @@
 
-export class AudioUtils {
+export class AudioUtilities {
   static async audioToBase64(audioBlob: Blob): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();

@@ -1,8 +1,8 @@
 
-import { BaseApiService } from './baseApiService';
+import { ApiClient } from './apiClient';
 import { HealthStatus } from '../types/dental';
 
-export class HealthService extends BaseApiService {
+export class HealthService extends ApiClient {
   async healthCheck(): Promise<HealthStatus> {
     return this.makeRequest<HealthStatus>('/health');
   }
