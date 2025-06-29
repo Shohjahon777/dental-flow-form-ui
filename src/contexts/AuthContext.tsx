@@ -27,7 +27,7 @@ export const useAuth = () => {
 };
 
 // Use relative URLs that will be proxied by Vite
-const API_BASE_URL = '/auth';
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
