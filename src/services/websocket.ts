@@ -4,9 +4,8 @@ import { WebSocketMessage } from '../types/dental';
 export class WebSocketService {
   private wsUrl: string;
 
-  constructor() {
-    const apiUri = import.meta.env.VITE_AI_URI || 'https://backendfastapi-v8lv.onrender.com/api';
-    this.wsUrl = apiUri.replace('http', 'ws').replace('https', 'wss').replace('/api', '');
+  constructor(wsUrl: string) {
+    this.wsUrl = wsUrl;
   }
 
   connectWebSocket(

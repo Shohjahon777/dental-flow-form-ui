@@ -1,8 +1,8 @@
 
-import { BaseApiService } from './baseApiService';
+import { ApiClient } from './apiClient';
 import { SessionResponse, SessionStatus } from '../types/dental';
 
-export class SessionService extends BaseApiService {
+export class SessionsService extends ApiClient {
   async createSession(patientId: string): Promise<SessionResponse> {
     return this.makeRequest<SessionResponse>('/sessions', 'POST', { patient_id: patientId });
   }
