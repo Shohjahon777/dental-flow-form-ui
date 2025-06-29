@@ -69,13 +69,15 @@ export function AIDentalPatient() {
       setConnectionStatus(isConnected ? 'connected' : 'error');
       
       if (!isConnected) {
-        setError('Backend server is not available. Please check if the FastAPI server is running on port 8000.');
-        toast.error('Backend connection failed');
+        setError('AI backend server is not available. Please check your connection.');
+        toast.error('AI backend connection failed');
+      } else {
+        toast.success('Connected to AI backend');
       }
     } catch (err) {
       setConnectionStatus('error');
-      setError('Cannot connect to backend server');
-      toast.error('Backend connection failed');
+      setError('Cannot connect to AI backend server');
+      toast.error('AI backend connection failed');
     }
   };
 
@@ -101,7 +103,7 @@ export function AIDentalPatient() {
       }
     } catch (err) {
       console.error('Error loading patients:', err);
-      setError('Failed to load patients. Please check if the backend server is running.');
+      setError('Failed to load patients from AI backend.');
       toast.error('Failed to load patients');
     } finally {
       setLoading(false);
@@ -115,7 +117,7 @@ export function AIDentalPatient() {
     }
     
     if (connectionStatus !== 'connected') {
-      setError('Backend server is not available. Please check your connection.');
+      setError('AI backend server is not available. Please check your connection.');
       return;
     }
 
@@ -150,7 +152,8 @@ export function AIDentalPatient() {
     try {
       console.log('Initializing WebSocket for patient:', patientId);
       
-      const wsUrl = `ws://localhost:8000/ws/${patientId}`;
+      // Use the deployed backend WebSocket URL
+      const wsUrl = `wss://backendfastapi-v8lv.onrender.com/ws/${patientId}`;
       console.log('WebSocket URL:', wsUrl);
       
       wsRef.current = new WebSocket(wsUrl);
@@ -478,7 +481,7 @@ export function AIDentalPatient() {
             {connectionStatus === 'error' && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-sm flex items-center">
                 <AlertCircle className="w-4 h-4 mr-2" />
-                Backend server unavailable. Please start your FastAPI server.
+                AI backend server unavailable. Please check your connection.
               </div>
             )}
 
@@ -543,7 +546,7 @@ export function AIDentalPatient() {
                   <Play className="h-4 w-4" />
                   <span>
                     {loading ? 'Starting...' : 
-                     connectionStatus !== 'connected' ? 'Backend Unavailable' : 
+                     connectionStatus !== 'connected' ? 'AI Backend Unavailable' : 
                      'Begin Patient Interview'}
                   </span>
                 </Button>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,7 +9,7 @@ import { BemorLogo } from '@/components/ui/bemor-logo';
 import { GuidelinesButton } from '@/components/ui/guidelines-button';
 import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
 import { useOnboarding } from '@/hooks/useOnboarding';
-import axios from 'axios';
+import { dentalApiService } from '@/api/dentalService';
 
 interface Patient {
   id: string;
@@ -41,7 +40,7 @@ const PatientSelectionPage = () => {
   const { showTour, completeTour, skipTour } = useOnboarding();
   const [patients, setPatients] = useState<Patient[]>([]);
 
-  // Default patients (will be replaced by API call)
+  // Default patients (will be used as fallback)
   const defaultPatients: Patient[] = [
     {
       id: 'patient1',
@@ -87,15 +86,36 @@ const PatientSelectionPage = () => {
     const fetchPatients = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`http://localhost:8000/api/patients`)
+        console.log('Fetching patients from AI backend...');
         
-        const data = response.data;
-        console.log("Fetched patients:", data);
-        setPatients(data);
-      } catch (error) {
+        // Try to fetch from AI backend first
+        const aiPatients = await dentalApiService.getPatients();
+        
+        // Convert AI backend patient format to our format
+        const convertedPatients = aiPatients.map(patient => ({
+          id: patient.id,
+          name: patient.name,
+          age: `${patient.age} years old`,
+          gender: patient.gender,
+          description: patient.description,
+          complexity: patient.complexity,
+          color: 'bg-teal-50 border-teal-200 hover:bg-teal-100'
+        }));
+        
+        console.log("AI Patients fetched successfully:", convertedPatients);
+        setPatients(convertedPatients);
+        
         toast({
-          title: "Error",
-          description: "Failed to load patient data. Using default patients.",
+          title: "Success",
+          description: "Patients loaded from AI backend successfully.",
+          variant: "default",
+        });
+        
+      } catch (error) {
+        console.error('Failed to fetch from AI backend:', error);
+        toast({
+          title: "Warning",
+          description: "Could not connect to AI backend. Using default patients.",
           variant: "destructive",
         });
         setPatients(defaultPatients);
@@ -120,26 +140,25 @@ const PatientSelectionPage = () => {
     console.log("Selected patient ID:", selectedPatient);
 
     try {
-      const response = await axios.post('http://localhost:8000/api/sessions', {
-        patient_id: selectedPatient,
-      });
+      // Try to create session with AI backend
+      const response = await dentalApiService.createSession(selectedPatient);
 
-      console.log("POST request response:", response.data);
+      console.log("AI backend session response:", response);
 
       toast({
         title: "Session created",
-        description: "Session created successfully.",
+        description: `Session created successfully for ${response.patient_name}.`,
         variant: "default",
       });
 
-      // Navigate with the actual selected patient ID, not hardcoded
+      // Navigate with the actual selected patient ID
       navigate(`/form/${selectedPatient}`);
     } catch (error) {
-      console.error("POST request error:", error);
+      console.error("AI backend session creation error:", error);
 
       toast({
         title: "Error creating session",
-        description: error.response?.data?.message || "An unexpected error occurred.",
+        description: error instanceof Error ? error.message : "An unexpected error occurred.",
         variant: "destructive",
       });
     }
@@ -150,7 +169,7 @@ const PatientSelectionPage = () => {
       <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading patient data...</p>
+          <p className="text-gray-600">Loading patient data from AI backend...</p>
         </div>
       </div>
     );
@@ -158,7 +177,6 @@ const PatientSelectionPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 relative">
-      {/* Guidelines Button - Fixed position with responsive positioning */}
       <GuidelinesButton />
       
       <OnboardingTour
@@ -167,7 +185,6 @@ const PatientSelectionPage = () => {
         onSkip={skipTour}
       />
 
-      {/* Header */}
       <header className="dental-header">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -194,20 +211,18 @@ const PatientSelectionPage = () => {
         </div>
       </header>
 
-      {/* Main Content - Centered layout */}
       <main className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Patient Assessment Setup</h1>
           <p className="text-gray-600">
-            Select a patient to begin the dental and medical history assessment.
+            Select a patient to begin the dental and medical history assessment with AI simulation.
           </p>
         </div>
 
-        {/* Centered Patient Selection */}
         <div className="flex flex-col items-center space-y-6">
           <h2 className="text-2xl font-bold text-gray-900 flex items-center">
             <Users className="w-6 h-6 mr-2 text-teal-600" />
-            Available Patients
+            Available AI Patients
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl" data-tour="patient-cards">
@@ -251,7 +266,6 @@ const PatientSelectionPage = () => {
             ))}
           </div>
 
-          {/* Debug info */}
           {selectedPatient && (
             <div className="bg-blue-50 border border-blue-200 p-3 rounded-md w-full max-w-2xl">
               <p className="text-sm text-blue-700">
@@ -263,7 +277,6 @@ const PatientSelectionPage = () => {
             </div>
           )}
 
-          {/* Action Buttons - Centered */}
           <div className="flex justify-center items-center gap-4 bg-white rounded-lg p-6 shadow-lg border border-teal-100 w-full max-w-2xl">
             <Button 
               variant="outline" 
@@ -280,7 +293,7 @@ const PatientSelectionPage = () => {
               className="dental-button-primary px-8"
               data-tour="start-assessment"
             >
-              Start Assessment
+              Start AI Assessment
             </Button>
           </div>
         </div>

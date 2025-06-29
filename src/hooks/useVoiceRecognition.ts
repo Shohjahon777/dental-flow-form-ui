@@ -25,7 +25,8 @@ export const useVoiceRecognition = (options: VoiceRecognitionOptions = {}) => {
 
   const connectWebSocket = useCallback((patientId: string) => {
     try {
-      const wsUrl = `ws://localhost:8000/ws/${patientId}`;
+      // Use your deployed backend WebSocket URL
+      const wsUrl = `wss://backendfastapi-v8lv.onrender.com/ws/${patientId}`;
       websocketRef.current = new WebSocket(wsUrl);
       
       websocketRef.current.onopen = () => {

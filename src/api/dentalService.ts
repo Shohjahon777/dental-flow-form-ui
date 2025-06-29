@@ -64,10 +64,10 @@ class DentalApiService {
   private wsUrl: string;
 
   constructor() {
-    // Use environment variable or fallback to localhost
-    const apiUri = import.meta.env.VITE_AI_URI || 'http://localhost:8000';
-    this.baseUrl = apiUri.replace('/api', ''); // Remove /api suffix if present
-    this.wsUrl = this.baseUrl.replace('http', 'ws');
+    // Use the deployed backend URL
+    const apiUri = import.meta.env.VITE_AI_URI || 'https://backendfastapi-v8lv.onrender.com/api';
+    this.baseUrl = apiUri;
+    this.wsUrl = this.baseUrl.replace('http', 'ws').replace('https', 'wss').replace('/api', '');
     
     console.log('Dental API Service initialized:', {
       baseUrl: this.baseUrl,
@@ -78,8 +78,8 @@ class DentalApiService {
   // Get all available patients
   async getPatients(): Promise<PatientInfo[]> {
     try {
-      console.log('Fetching patients from:', `${this.baseUrl}/api/patients`);
-      const response = await fetch(`${this.baseUrl}/api/patients`, {
+      console.log('Fetching patients from:', `${this.baseUrl}/patients`);
+      const response = await fetch(`${this.baseUrl}/patients`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -108,7 +108,7 @@ class DentalApiService {
   }> {
     try {
       console.log('Creating session for patient:', patientId);
-      const response = await fetch(`${this.baseUrl}/api/sessions`, {
+      const response = await fetch(`${this.baseUrl}/sessions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -134,7 +134,7 @@ class DentalApiService {
   async askQuestion(patientId: string, question: string): Promise<QuestionResponse> {
     try {
       console.log('Asking question:', { patientId, question });
-      const response = await fetch(`${this.baseUrl}/api/ask`, {
+      const response = await fetch(`${this.baseUrl}/ask`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -163,7 +163,7 @@ class DentalApiService {
   async getSessionStatus(patientId: string): Promise<SessionStatus> {
     try {
       console.log('Getting session status for patient:', patientId);
-      const response = await fetch(`${this.baseUrl}/api/sessions/${patientId}`, {
+      const response = await fetch(`${this.baseUrl}/sessions/${patientId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -188,7 +188,7 @@ class DentalApiService {
   async deleteSession(patientId: string): Promise<{ message: string }> {
     try {
       console.log('Deleting session for patient:', patientId);
-      const response = await fetch(`${this.baseUrl}/api/sessions/${patientId}`, {
+      const response = await fetch(`${this.baseUrl}/sessions/${patientId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -213,7 +213,7 @@ class DentalApiService {
   async healthCheck(): Promise<HealthStatus> {
     try {
       console.log('Performing health check');
-      const response = await fetch(`${this.baseUrl}/api/health`, {
+      const response = await fetch(`${this.baseUrl}/health`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
