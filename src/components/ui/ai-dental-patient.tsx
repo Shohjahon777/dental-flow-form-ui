@@ -150,7 +150,7 @@ export function AIDentalPatient() {
     try {
       console.log('Initializing WebSocket for patient:', patientId);
       
-      const wsUrl = `ws://localhost:8000/ws/${patientId}`;
+      const wsUrl = `ws://backendfastapi-v8lv.onrender.com/ws/${patientId}`;
       console.log('WebSocket URL:', wsUrl);
       
       wsRef.current = new WebSocket(wsUrl);

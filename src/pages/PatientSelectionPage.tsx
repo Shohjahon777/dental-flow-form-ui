@@ -87,7 +87,7 @@ const PatientSelectionPage = () => {
     const fetchPatients = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`http://localhost:8000/api/patients`)
+        const response = await axios.get(`https://backendfastapi-v8lv.onrender.com/api/patients`)
         
         const data = response.data;
         console.log("Fetched patients:", data);
@@ -120,7 +120,7 @@ const PatientSelectionPage = () => {
     console.log("Selected patient ID:", selectedPatient);
 
     try {
-      const response = await axios.post('http://localhost:8000/api/sessions', {
+      const response = await axios.post('https://backendfastapi-v8lv.onrender.com/api/sessions', {
         patient_id: selectedPatient,
       });
 

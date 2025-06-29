@@ -65,7 +65,7 @@ class DentalApiService {
 
   constructor() {
     // Use environment variable or fallback to localhost
-    const apiUri = import.meta.env.VITE_AI_URI || 'http://localhost:8000';
+    const apiUri = import.meta.env.VITE_AI_URI || 'https://backendfastapi-v8lv.onrender.com';
     this.baseUrl = apiUri.replace('/api', ''); // Remove /api suffix if present
     this.wsUrl = this.baseUrl.replace('http', 'ws');
     

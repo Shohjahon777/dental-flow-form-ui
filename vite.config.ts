@@ -8,7 +8,7 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
-    port: 8080,
+    port: 5173,
   },
   plugins: [
     react(),
@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => ({
   },
   proxy: {
       '/api': {
-        target: 'http://localhost:8000', // Your backend
+        target: 'https://backendfastapi-v8lv.onrender.com', 
         changeOrigin: true,
         rewrite: (path: string) => path.replace(/^\/api/, '/api'),
       },
