@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface User {
@@ -6,6 +5,7 @@ interface User {
   email: string;
   name: string;
   role: 'student' | 'instructor' | 'admin';
+  username: string;
 }
 
 interface AuthContextType {
@@ -26,6 +26,9 @@ export const useAuth = () => {
   return context;
 };
 
+// Use relative URLs that will be proxied by Vite
+const API_BASE_URL = '/auth';
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,62 +37,115 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check for existing session in localStorage
     const savedUser = localStorage.getItem('dentalApp_user');
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+      } catch (error) {
+        console.error('Error parsing saved user data:', error);
+        localStorage.removeItem('dentalApp_user');
+      }
     }
     setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // Simulate API call
+  const login = async (name: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     
-    // Simple demo authentication - in real app, this would be API call
-    if (email && password) {
-      let role: 'student' | 'instructor' | 'admin' = 'student';
-      
-      if (email.includes('admin')) {
-        role = 'admin';
-      } else if (email.includes('instructor')) {
-        role = 'instructor';
+    try {
+      const response = await fetch(`${API_BASE_URL}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: name,
+          password: password,
+        }),
+        credentials: 'include', // Include cookies if needed
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Determine role based on email domain or username pattern
+        let role: 'student' | 'instructor' | 'admin' = 'student';
+        if (name.toLowerCase().includes('admin')) {
+          role = 'admin';
+        } else if (name.toLowerCase().includes('instructor')) {
+          role = 'instructor';
+        }
+        
+        const userData: User = {
+          id: data.id || Math.random().toString(36).substr(2, 9),
+          email: data.email || name,
+          name: data.name || data.username || name,
+          role: role,
+          username: data.username || name,
+        };
+        
+        setUser(userData);
+        localStorage.setItem('dentalApp_user', JSON.stringify(userData));
+        setIsLoading(false);
+        return true;
+      } else {
+        // Handle error response
+        const errorData = await response.json().catch(() => ({ message: 'Login failed' }));
+        console.error('Login failed:', errorData);
+        setIsLoading(false);
+        return false;
       }
-      
-      const userData: User = {
-        id: Math.random().toString(36).substr(2, 9),
-        email,
-        name: email.split('@')[0],
-        role
-      };
-      
-      setUser(userData);
-      localStorage.setItem('dentalApp_user', JSON.stringify(userData));
+    } catch (error) {
+      console.error('Login error:', error);
       setIsLoading(false);
-      return true;
+      return false;
     }
-    
-    setIsLoading(false);
-    return false;
   };
 
   const register = async (name: string, email: string, password: string, role: 'student' | 'instructor'): Promise<boolean> => {
     setIsLoading(true);
     
-    // Simulate API call
-    if (name && email && password) {
-      const userData: User = {
-        id: Math.random().toString(36).substr(2, 9),
-        email,
-        name,
-        role
-      };
-      
-      setUser(userData);
-      localStorage.setItem('dentalApp_user', JSON.stringify(userData));
+    try {
+      const response = await fetch(`${API_BASE_URL}/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: name,
+          email: email,
+          password: password,
+          role: role,
+        }),
+        credentials: 'include', // Include cookies if needed
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        const userData: User = {
+          id: data.id || Math.random().toString(36).substr(2, 9),
+          email: email,
+          name: name,
+          role: role,
+          username: data.username || name,
+        };
+        
+        setUser(userData);
+        localStorage.setItem('dentalApp_user', JSON.stringify(userData));
+        setIsLoading(false);
+        return true;
+      } else {
+        // Handle error response
+        const errorData = await response.json().catch(() => ({ message: 'Registration failed' }));
+        console.error('Registration failed:', errorData);
+        setIsLoading(false);
+        return false;
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
       setIsLoading(false);
-      return true;
+      return false;
     }
-    
-    setIsLoading(false);
-    return false;
   };
 
   const logout = () => {

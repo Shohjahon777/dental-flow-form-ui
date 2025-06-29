@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,7 +9,7 @@ import { Loader2, Stethoscope } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const LoginPage = () => {
-  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login, user } = useAuth();
@@ -22,24 +21,42 @@ const LoginPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
-    const success = await login(email, password);
     
-    if (success) {
+    if (!name || !password) {
       toast({
-        title: "Welcome back!",
-        description: "You have successfully logged in.",
-      });
-    } else {
-      toast({
-        title: "Login failed",
-        description: "Please check your credentials and try again.",
+        title: "Missing fields",
+        description: "Please enter both email and password.",
         variant: "destructive",
       });
+      return;
     }
-    
-    setIsLoading(false);
+
+    setIsLoading(true);
+
+    try {
+      const success = await login(name, password);
+      
+      if (success) {
+        toast({
+          title: "Welcome back!",
+          description: "You have successfully logged in.",
+        });
+      } else {
+        toast({
+          title: "Login failed",
+          description: "Please check your credentials and try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Connection error",
+        description: "Unable to connect to the server. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -57,15 +74,16 @@ const LoginPage = () => {
         <CardContent className="space-y-4">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
+              <Label htmlFor="name">Student Name</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="your.email@school.edu"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="name"
+                type="name"
+                placeholder="Joe Doe"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 required
                 className="dental-input"
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
@@ -78,6 +96,7 @@ const LoginPage = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 className="dental-input"
+                disabled={isLoading}
               />
             </div>
             <Button 
@@ -104,9 +123,9 @@ const LoginPage = () => {
           </div>
           
           <div className="bg-gray-50 p-4 rounded-lg text-xs text-gray-500">
-            <p className="font-medium mb-1">Demo Credentials:</p>
-            <p>Student: student@dental.edu / password</p>
-            <p>Instructor: instructor@dental.edu / password</p>
+            <p className="font-medium mb-1">Test with your backend credentials:</p>
+            <p>Username: test</p>
+            <p>Password: qwerty</p>
           </div>
         </CardContent>
       </Card>

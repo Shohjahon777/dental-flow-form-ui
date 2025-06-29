@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, FileText, CheckCircle, User, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { paper1Questions, paper2Questions } from '@/data/formQuestions';
 
 const ReviewPage = () => {
   const { patientId } = useParams();
@@ -182,63 +182,30 @@ const ReviewPage = () => {
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <FileText className="w-5 h-5 mr-2 text-primary" />
-                  Paper 1: Medical History
+                  Paper 1: Dental History
                   <Badge className="ml-3 bg-blue-100 text-blue-800">Student Completed</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">Chief Complaint</h4>
-                    <p className="text-gray-700 text-sm bg-gray-50 p-3 rounded-lg">
-                      {formData.chief_complaint || 'Not provided'}
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">Allergies</h4>
-                    <p className="text-gray-700 text-sm bg-gray-50 p-3 rounded-lg">
-                      {formData.allergies || 'Not provided'}
-                    </p>
-                  </div>
-                  <div className="md:col-span-2">
-                    <h4 className="font-semibold text-gray-900 mb-2">Medical History</h4>
-                    <p className="text-gray-700 text-sm bg-gray-50 p-3 rounded-lg">
-                      {formData.medical_history || 'Not provided'}
-                    </p>
-                  </div>
-                  <div className="md:col-span-2">
-                    <h4 className="font-semibold text-gray-900 mb-2">Current Medications</h4>
-                    <p className="text-gray-700 text-sm bg-gray-50 p-3 rounded-lg">
-                      {formData.medications || 'Not provided'}
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-gray-700">Heart Problems</p>
-                    <Badge variant={formData.heart_problems === 'Yes' ? 'destructive' : 'secondary'}>
-                      {formData.heart_problems || 'Not answered'}
-                    </Badge>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-gray-700">Blood Pressure</p>
-                    <Badge variant={formData.blood_pressure === 'Yes' ? 'destructive' : 'secondary'}>
-                      {formData.blood_pressure || 'Not answered'}
-                    </Badge>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-gray-700">Diabetes</p>
-                    <Badge variant={formData.diabetes === 'Yes' ? 'destructive' : 'secondary'}>
-                      {formData.diabetes || 'Not answered'}
-                    </Badge>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-gray-700">Pregnancy</p>
-                    <Badge variant="secondary">
-                      {formData.pregnancy || 'Not answered'}
-                    </Badge>
-                  </div>
+                  {paper1Questions.map((q) => (
+                    <div key={q.id}>
+                      <h4 className="font-semibold text-gray-900 mb-1">{q.question}</h4>
+                      <p className="text-gray-700 text-sm bg-gray-50 p-3 rounded-lg">
+                        {(() => {
+                          const val = formData[q.id];
+                          if (q.type === 'yes-no-details') {
+                            if (!val) return 'Not answered';
+                            return `${val.answer === 'yes' ? 'Yes' : 'No'}${val.details ? `: ${val.details}` : ''}`;
+                          }
+                          if (q.type === 'yes-no') {
+                            return val === 'yes' ? 'Yes' : val === 'no' ? 'No' : 'Not answered';
+                          }
+                          return val || 'Not answered';
+                        })()}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>

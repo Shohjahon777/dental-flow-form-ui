@@ -40,11 +40,11 @@ const PatientSelectionPage = () => {
   const { showTour, completeTour, skipTour } = useOnboarding();
   const [patients, setPatients] = useState<Patient[]>([]);
 
-  // Default patients (will be used as fallback)
+  // Default patients (will be used as fallback) - using different IDs to avoid conflicts
   const defaultPatients: Patient[] = [
     {
-      id: 'patient1',
-      name: 'Patient 1',
+      id: 'local-patient-1', // Different ID to avoid conflict with API
+      name: 'Local Patient 1',
       age: '45 years old',
       gender: 'Female',
       description: 'Routine dental checkup with history of periodontal disease',
@@ -62,8 +62,8 @@ const PatientSelectionPage = () => {
       }
     },
     {
-      id: 'patient2',
-      name: 'Patient 2', 
+      id: 'local-patient-2', // Different ID to avoid conflict with API
+      name: 'Local Patient 2',
       age: '32 years old',
       gender: 'Male',
       description: 'Emergency visit with dental pain and possible complications',
@@ -86,35 +86,35 @@ const PatientSelectionPage = () => {
     const fetchPatients = async () => {
       try {
         setLoading(true);
-<<<<<<< HEAD
-        const response = await axios.get(`https://backendfastapi-v8lv.onrender.com/api/patients`)
-=======
         console.log('Fetching patients from AI backend...');
-        
+
         // Try to fetch from AI backend first
         const aiPatients = await dentalApiService.getPatients();
-        
+
         // Convert AI backend patient format to our format
-        const convertedPatients = aiPatients.map(patient => ({
-          id: patient.id,
+        // Use the exact ID from the API response
+        const convertedPatients = aiPatients.map((patient, index) => ({
+          id: patient.id, // Use exact ID from API (patient1, patient2, etc.)
           name: patient.name,
           age: `${patient.age} years old`,
           gender: patient.gender,
           description: patient.description,
           complexity: patient.complexity,
-          color: 'bg-teal-50 border-teal-200 hover:bg-teal-100'
+          color: index % 2 === 0 ? 'bg-teal-50 border-teal-200 hover:bg-teal-100' : 'bg-cyan-50 border-cyan-200 hover:bg-cyan-100',
+          // Add the additional fields from API
+          file: patient.file,
+          voice: patient.voice
         }));
-        
+
         console.log("AI Patients fetched successfully:", convertedPatients);
         setPatients(convertedPatients);
->>>>>>> 48f5a9640ee1c7cf354ea7097041cf4fbc28d267
-        
+
         toast({
           title: "Success",
           description: "Patients loaded from AI backend successfully.",
           variant: "default",
         });
-        
+
       } catch (error) {
         console.error('Failed to fetch from AI backend:', error);
         toast({
@@ -131,6 +131,23 @@ const PatientSelectionPage = () => {
     fetchPatients();
   }, []);
 
+  const handlePatientSelect = (patientId: string) => {
+    console.log("=== PATIENT SELECTION DEBUG ===");
+    console.log("Clicked patient ID:", patientId);
+    console.log("Available patients:", patients.map(p => ({ id: p.id, name: p.name })));
+
+    const selectedPatientData = patients.find(p => p.id === patientId);
+    console.log("Found patient data:", selectedPatientData);
+
+    if (selectedPatientData) {
+      console.log("Setting selected patient to:", patientId);
+      setSelectedPatient(patientId);
+    } else {
+      console.error("ERROR: Patient not found with ID:", patientId);
+    }
+    console.log("=== END DEBUG ===");
+  };
+
   const handleProceed = async () => {
     if (!selectedPatient) {
       toast({
@@ -141,31 +158,36 @@ const PatientSelectionPage = () => {
       return;
     }
 
+    const selectedPatientData = patients.find(p => p.id === selectedPatient);
+
+    console.log("=== FINAL NAVIGATION DEBUG ===");
     console.log("Selected patient ID:", selectedPatient);
+    console.log("Selected patient data:", selectedPatientData);
+    console.log("About to navigate to:", `/form/${selectedPatient}`);
+    console.log("Current patients array:", patients.map(p => ({ id: p.id, name: p.name })));
+    console.log("=== END NAVIGATION DEBUG ===");
 
     try {
-<<<<<<< HEAD
-      const response = await axios.post('https://backendfastapi-v8lv.onrender.com/api/sessions', {
-        patient_id: selectedPatient,
-      });
-=======
-      // Try to create session with AI backend
+      // Create session first
       const response = await dentalApiService.createSession(selectedPatient);
->>>>>>> 48f5a9640ee1c7cf354ea7097041cf4fbc28d267
-
-      console.log("AI backend session response:", response);
+      console.log("Session created successfully:", response);
 
       toast({
         title: "Session created",
-        description: `Session created successfully for ${response.patient_name}.`,
+        description: `Session created successfully for ${selectedPatientData?.name || 'selected patient'}.`,
         variant: "default",
       });
 
-      // Navigate with the actual selected patient ID
-      navigate(`/form/${selectedPatient}`);
-    } catch (error) {
-      console.error("AI backend session creation error:", error);
+      // Clear any existing form data for this patient to ensure fresh start
+      localStorage.removeItem(`dentalApp_form_${selectedPatient}`);
+      localStorage.removeItem(`dentalApp_submitted_${selectedPatient}`);
 
+      // Navigate with the exact patient ID
+      console.log("Navigating to:", `/form/${selectedPatient}`);
+      navigate(`/form/${selectedPatient}`);
+
+    } catch (error) {
+      console.error("Session creation error:", error);
       toast({
         title: "Error creating session",
         description: error instanceof Error ? error.message : "An unexpected error occurred.",
@@ -188,7 +210,7 @@ const PatientSelectionPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 relative">
       <GuidelinesButton />
-      
+
       <OnboardingTour
         isVisible={showTour}
         onComplete={completeTour}
@@ -199,9 +221,9 @@ const PatientSelectionPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => navigate('/')}
                 className="text-gray-600 hover:text-teal-700 hover:bg-teal-50"
                 data-tour="back-dashboard"
@@ -234,27 +256,22 @@ const PatientSelectionPage = () => {
             <Users className="w-6 h-6 mr-2 text-teal-600" />
             Available AI Patients
           </h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl" data-tour="patient-cards">
             {patients.map((patient) => (
-              <Card 
+              <Card
                 key={patient.id}
-                className={`cursor-pointer transition-all duration-200 shadow-lg border-2 ${
-                  selectedPatient === patient.id 
-                    ? 'border-teal-500 bg-teal-50 shadow-xl scale-105' 
+                className={`cursor-pointer transition-all duration-200 shadow-lg border-2 ${selectedPatient === patient.id
+                    ? 'border-teal-500 bg-teal-50 shadow-xl scale-105'
                     : `bg-teal-50 border-teal-200 hover:bg-teal-100 hover:shadow-xl hover:scale-102`
-                }`}
-                onClick={() => {
-                  console.log("Selecting patient:", patient.id, patient.name);
-                  setSelectedPatient(patient.id);
-                }}
+                  }`}
+                onClick={() => handlePatientSelect(patient.id)}
               >
                 <CardHeader className="text-center pb-4">
-                  <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                    selectedPatient === patient.id 
-                      ? 'bg-teal-500 text-white' 
+                  <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${selectedPatient === patient.id
+                      ? 'bg-teal-500 text-white'
                       : ' border-2 border-teal-300 text-teal-600'
-                  }`}>
+                    }`}>
                     <User className="w-8 h-8" />
                   </div>
                   <CardTitle className="text-xl text-gray-900">{patient.name}</CardTitle>
@@ -264,11 +281,10 @@ const PatientSelectionPage = () => {
                 </CardHeader>
                 <CardContent className="text-center">
                   <p className="text-sm text-gray-700 mb-3 leading-relaxed">{patient.description}</p>
-                  <div className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                    patient.complexity === 'High' 
-                      ? 'bg-orange-100 text-orange-800 border border-orange-200' 
+                  <div className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${patient.complexity === 'High'
+                      ? 'bg-orange-100 text-orange-800 border border-orange-200'
                       : 'bg-blue-100 text-blue-800 border border-blue-200'
-                  }`}>
+                    }`}>
                     {patient.complexity} Complexity
                   </div>
                 </CardContent>
@@ -284,20 +300,23 @@ const PatientSelectionPage = () => {
               <p className="text-sm text-blue-700">
                 Selected Patient Name: {patients.find(p => p.id === selectedPatient)?.name}
               </p>
+              <p className="text-sm text-blue-600 mt-2">
+                Debug: Total patients loaded: {patients.length}
+              </p>
             </div>
           )}
 
           <div className="flex justify-center items-center gap-4 bg-white rounded-lg p-6 shadow-lg border border-teal-100 w-full max-w-2xl">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => navigate('/')}
               className="text-gray-600 hover:bg-teal-50 border-teal-200"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Dashboard
             </Button>
-            
-            <Button 
+
+            <Button
               onClick={handleProceed}
               disabled={!selectedPatient}
               className="dental-button-primary px-8"

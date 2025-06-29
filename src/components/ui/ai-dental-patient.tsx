@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Mic, MicOff, Volume2, Play, Pause, Sparkles, Stethoscope, Bot, MessageCircle, Brain, User2, Activity, AlertCircle, Wifi, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +7,7 @@ import { AIRules } from "@/components/ui/ai-rules";
 import { dentalApiService, PatientInfo, SessionStatus } from "@/api/dentalService";
 import { toast } from "sonner";
 import { useVoiceRecognition } from "@/hooks/useVoiceRecognition";
+import { useParams } from "react-router-dom";
 
 interface WebSocketMessage {
   type: 'transcription' | 'answer' | 'error' | 'status';
@@ -29,29 +30,52 @@ export function AIDentalPatient() {
   const [currentQuestion, setCurrentQuestion] = useState<string>("");
   const [lastResponse, setLastResponse] = useState<string>("");
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
-  const [chatMessages, setChatMessages] = useState<Array<{sender: string, message: string, type: string}>>([]);
+  const [chatMessages, setChatMessages] = useState<Array<{ sender: string, message: string, type: string }>>([]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
+  const processingVoiceRef = useRef(false);
+  const {patientId} = useParams()
 
-  const { 
-    isListening, 
-    isSupported: microphoneSupported, 
-    startListening, 
-    stopListening, 
-    cleanup: cleanupVoice 
-  } = useVoiceRecognition({
-    onTranscription: (text) => {
+
+  // Callback to handle voice transcription and auto-send
+  const handleVoiceTranscription = useCallback(async (text: string) => {
+    if (!text.trim() || processingVoiceRef.current || !sessionActive) return;
+
+    processingVoiceRef.current = true;
+
+    try {
+      console.log('Voice transcription received:', text);
       addToChat('Student (Voice)', text, 'question');
       setCurrentQuestion(text);
-    },
-    onError: (errorMsg) => {
-      setError(errorMsg);
-      toast.error(errorMsg);
+
+      // Auto-send the voice question
+      await sendQuestion(text);
+    } catch (error) {
+      console.error('Error processing voice transcription:', error);
+    } finally {
+      processingVoiceRef.current = false;
     }
+  }, [sessionActive]);
+
+  const handleVoiceError = useCallback((errorMsg: string) => {
+    setError(errorMsg);
+    toast.error(errorMsg);
+    processingVoiceRef.current = false;
+  }, []);
+
+  const {
+    isListening,
+    isSupported: microphoneSupported,
+    startListening,
+    stopListening,
+    cleanup: cleanupVoice
+  } = useVoiceRecognition({
+    onTranscription: handleVoiceTranscription,
+    onError: handleVoiceError
   });
 
   useEffect(() => {
@@ -67,7 +91,7 @@ export function AIDentalPatient() {
       setConnectionStatus('connecting');
       const isConnected = await dentalApiService.testConnection();
       setConnectionStatus(isConnected ? 'connected' : 'error');
-      
+
       if (!isConnected) {
         setError('AI backend server is not available. Please check your connection.');
         toast.error('AI backend connection failed');
@@ -89,6 +113,7 @@ export function AIDentalPatient() {
     if ('speechSynthesis' in window) {
       speechSynthesis.cancel();
     }
+    processingVoiceRef.current = false;
   };
 
   const loadPatients = async () => {
@@ -99,7 +124,7 @@ export function AIDentalPatient() {
       console.log('Patients loaded:', patientsData);
       setPatients(patientsData);
       if (patientsData.length > 0) {
-        setSelectedPatient(patientsData[0].id);
+        setSelectedPatient(patientId);
       }
     } catch (err) {
       console.error('Error loading patients:', err);
@@ -115,7 +140,7 @@ export function AIDentalPatient() {
       setError('No patient selected');
       return;
     }
-    
+
     if (connectionStatus !== 'connected') {
       setError('AI backend server is not available. Please check your connection.');
       return;
@@ -128,17 +153,17 @@ export function AIDentalPatient() {
     try {
       setLoading(true);
       setError(null);
-      
+
       console.log('Creating session for patient:', patientId);
       const sessionData = await dentalApiService.createSession(patientId);
       setSessionActive(true);
       setConversationStarted(true);
       setSuccess(`Session created for ${sessionData.patient_name}`);
       toast.success(`Session started with ${sessionData.patient_name}`);
-      
+
       setChatMessages([]);
       initializeWebSocket(patientId);
-      
+
     } catch (err) {
       console.error('Session creation error:', err);
       setError(err instanceof Error ? err.message : 'Failed to create session');
@@ -151,23 +176,19 @@ export function AIDentalPatient() {
   const initializeWebSocket = (patientId: string) => {
     try {
       console.log('Initializing WebSocket for patient:', patientId);
-      
-<<<<<<< HEAD
-      const wsUrl = `ws://backendfastapi-v8lv.onrender.com/ws/${patientId}`;
-=======
+
       // Use the deployed backend WebSocket URL
       const wsUrl = `wss://backendfastapi-v8lv.onrender.com/ws/${patientId}`;
->>>>>>> 48f5a9640ee1c7cf354ea7097041cf4fbc28d267
       console.log('WebSocket URL:', wsUrl);
-      
+
       wsRef.current = new WebSocket(wsUrl);
-      
+
       wsRef.current.onopen = () => {
         console.log('WebSocket connected');
         setConnectionStatus('connected');
         toast.success('Voice AI connected');
       };
-      
+
       wsRef.current.onmessage = (event) => {
         try {
           const data: WebSocketMessage = JSON.parse(event.data);
@@ -177,18 +198,18 @@ export function AIDentalPatient() {
           console.error('Error parsing WebSocket message:', error);
         }
       };
-      
+
       wsRef.current.onclose = () => {
         console.log('WebSocket disconnected');
         setConnectionStatus('disconnected');
       };
-      
+
       wsRef.current.onerror = (error) => {
         console.error('WebSocket error:', error);
         setConnectionStatus('error');
         setError('WebSocket connection error');
       };
-      
+
     } catch (err) {
       console.error('Failed to initialize WebSocket:', err);
       setError('Failed to connect to voice AI. Audio features may not work.');
@@ -198,12 +219,12 @@ export function AIDentalPatient() {
 
   const handleWebSocketMessage = (data: WebSocketMessage) => {
     console.log('Processing WebSocket message:', data);
-    
+
     switch (data.type) {
       case 'transcription':
         if (data.text) {
-          addToChat('Student (Voice)', data.text, 'question');
-          setCurrentQuestion(data.text);
+          // Handle transcription from WebSocket (if your backend sends it)
+          handleVoiceTranscription(data.text);
         }
         break;
       case 'answer':
@@ -263,10 +284,18 @@ export function AIDentalPatient() {
     try {
       setLoading(true);
       setError(null);
-      
+
       console.log('Sending question:', questionText);
-      addToChat('Student', questionText, 'question');
-      
+
+      // Only add to chat if it's not already added (to avoid duplicates from voice)
+      const isVoiceQuestion = chatMessages.some(msg =>
+        msg.message === questionText && msg.sender.includes('Voice')
+      );
+
+      if (!isVoiceQuestion) {
+        addToChat('Student', questionText, 'question');
+      }
+
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
         const message = {
           type: 'text_question',
@@ -282,9 +311,12 @@ export function AIDentalPatient() {
         playResponse(response.answer);
         updateMoodFromResponse(response.answer);
       }
-      
-      setCurrentQuestion('');
-      
+
+      // Clear the input only if it's a manual text input
+      if (!processingVoiceRef.current) {
+        setCurrentQuestion('');
+      }
+
     } catch (err) {
       console.error('Error sending question:', err);
       setError(err instanceof Error ? err.message : 'Failed to ask question');
@@ -298,7 +330,12 @@ export function AIDentalPatient() {
     if (isListening) {
       stopListening();
     } else {
-      startListening(selectedPatient);
+      if (sessionActive && connectionStatus === 'connected') {
+        setCurrentQuestion(''); // Clear any existing text
+        startListening(selectedPatient);
+      } else {
+        toast.error('Please start a session first and ensure AI backend is connected');
+      }
     }
   };
 
@@ -306,21 +343,21 @@ export function AIDentalPatient() {
     if ('speechSynthesis' in window) {
       setIsPlaying(true);
       const utterance = new SpeechSynthesisUtterance(text);
-      
+
       const voices = speechSynthesis.getVoices();
-      const preferredVoice = voices.find(voice => 
-        voice.name.includes('Neural') || 
+      const preferredVoice = voices.find(voice =>
+        voice.name.includes('Neural') ||
         voice.name.includes('Premium') ||
         voice.lang.includes('en')
       );
       if (preferredVoice) {
         utterance.voice = preferredVoice;
       }
-      
+
       utterance.rate = 0.9;
       utterance.pitch = 1.0;
       utterance.volume = 0.8;
-      
+
       utterance.onend = () => setIsPlaying(false);
       utterance.onerror = () => setIsPlaying(false);
       speechSynthesis.speak(utterance);
@@ -342,7 +379,7 @@ export function AIDentalPatient() {
     } catch (err) {
       console.error('Failed to delete session:', err);
     }
-    
+
     setSessionActive(false);
     setSessionStatus(null);
     setError(null);
@@ -353,7 +390,8 @@ export function AIDentalPatient() {
     setLastResponse('');
     setPatientMood('calm');
     setChatMessages([]);
-    
+    processingVoiceRef.current = false;
+
     cleanup();
   };
 
@@ -385,7 +423,7 @@ export function AIDentalPatient() {
             <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-teal-100/20 via-transparent to-cyan-100/20"></div>
             <div className="absolute -top-8 -right-8 w-32 h-32 bg-gradient-to-br from-teal-200/30 to-cyan-200/30 rounded-full blur-2xl animate-pulse"></div>
             <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gradient-to-br from-blue-200/30 to-teal-200/30 rounded-full blur-xl animate-pulse delay-1000"></div>
-            
+
             <div className="absolute top-4 right-4 opacity-10">
               <div className="w-6 h-6 relative">
                 <div className="absolute inset-x-2 inset-y-0 bg-teal-600"></div>
@@ -397,19 +435,17 @@ export function AIDentalPatient() {
           <CardHeader className="text-center pb-6 relative z-10">
             {/* Professional AI Avatar */}
             <div className="relative mb-6 mx-auto w-24 h-24">
-              <div className={`absolute inset-0 rounded-full transition-all duration-1000 ${
-                isListening
+              <div className={`absolute inset-0 rounded-full transition-all duration-1000 ${isListening
                   ? `animate-ping bg-gradient-to-r ${getMoodColor()} opacity-75`
                   : isPlaying
                     ? `animate-pulse bg-gradient-to-r ${getMoodColor()} opacity-60`
                     : `bg-gradient-to-r ${getMoodColor()} opacity-40`
-              }`}></div>
+                }`}></div>
 
               <div className="absolute inset-2 rounded-full bg-white/80 backdrop-blur-sm border border-teal-200/50"></div>
 
-              <div className={`relative w-20 h-20 mx-auto mt-2 rounded-full bg-gradient-to-br from-white to-teal-50 flex items-center justify-center shadow-lg border-2 border-white transition-all duration-300 ${
-                isListening || isPlaying ? 'scale-110' : 'scale-100'
-              }`}>
+              <div className={`relative w-20 h-20 mx-auto mt-2 rounded-full bg-gradient-to-br from-white to-teal-50 flex items-center justify-center shadow-lg border-2 border-white transition-all duration-300 ${isListening || isPlaying ? 'scale-110' : 'scale-100'
+                }`}>
                 {isListening ? (
                   <div className="flex space-x-1">
                     <div className="w-1 h-6 bg-gradient-to-t from-teal-500 to-cyan-400 rounded-full animate-bounce"></div>
@@ -439,25 +475,23 @@ export function AIDentalPatient() {
                 <Stethoscope className="h-5 w-5 text-teal-600" />
                 AI Virtual Patient
               </CardTitle>
-              
+
               <div className="flex items-center justify-center space-x-2">
-                <Badge variant="outline" className={`text-xs font-medium transition-all duration-300 ${
-                  isListening
+                <Badge variant="outline" className={`text-xs font-medium transition-all duration-300 ${isListening
                     ? 'bg-teal-100 text-teal-700 border-teal-300'
                     : isPlaying
                       ? 'bg-blue-100 text-blue-700 border-blue-300'
                       : 'bg-gray-100 text-gray-600 border-gray-300'
-                }`}>
-                  <div className={`w-2 h-2 rounded-full mr-1 ${
-                    isListening
+                  }`}>
+                  <div className={`w-2 h-2 rounded-full mr-1 ${isListening
                       ? 'bg-teal-500 animate-pulse'
                       : isPlaying
                         ? 'bg-blue-500 animate-pulse'
                         : 'bg-gray-400'
-                  }`}></div>
-                  {isListening ? 'Active Listening' : isPlaying ? 'Responding' : 'Standby'}
+                    }`}></div>
+                  {isListening ? 'Listening...' : isPlaying ? 'Responding' : 'Standby'}
                 </Badge>
-                
+
                 <Badge variant="outline" className="text-xs bg-gradient-to-r from-teal-50 to-cyan-50 text-teal-700 border-teal-200">
                   {getConnectionIcon()}
                   <span className="ml-1">{connectionStatus === 'connected' ? 'Online' : 'Offline'}</span>
@@ -505,11 +539,10 @@ export function AIDentalPatient() {
             {chatMessages.length > 0 && (
               <div className="bg-white border border-gray-200 rounded-md max-h-48 overflow-y-auto p-3 space-y-2">
                 {chatMessages.map((msg, index) => (
-                  <div key={index} className={`text-sm p-2 rounded ${
-                    msg.type === 'question' ? 'bg-blue-50 text-blue-700' :
-                    msg.type === 'answer' ? 'bg-green-50 text-green-700' :
-                    'bg-red-50 text-red-700'
-                  }`}>
+                  <div key={index} className={`text-sm p-2 rounded ${msg.type === 'question' ? 'bg-blue-50 text-blue-700' :
+                      msg.type === 'answer' ? 'bg-green-50 text-green-700' :
+                        'bg-red-50 text-red-700'
+                    }`}>
                     <strong>{msg.sender}:</strong> {msg.message}
                   </div>
                 ))}
@@ -522,10 +555,10 @@ export function AIDentalPatient() {
                   Interactive Patient Simulation
                 </p>
                 <p className="text-gray-600 text-xs leading-relaxed">
-                  Conduct comprehensive dental interviews with our advanced AI patient. 
+                  Conduct comprehensive dental interviews with our advanced AI patient.
                   Practice history taking, symptom assessment, and diagnostic questioning.
                 </p>
-                
+
                 {!conversationStarted ? (
                   <div className="text-sm text-teal-700 font-medium flex items-center justify-center bg-white/50 rounded-md py-2">
                     <MessageCircle className="w-4 h-4 mr-2" />
@@ -542,16 +575,16 @@ export function AIDentalPatient() {
 
             <div className="space-y-3">
               {!conversationStarted ? (
-                <Button 
+                <Button
                   onClick={handleStartConversation}
                   disabled={loading || connectionStatus !== 'connected'}
                   className="w-full bg-gradient-to-r from-teal-600 via-teal-700 to-cyan-600 hover:from-teal-700 hover:via-teal-800 hover:to-cyan-700 text-white font-semibold py-3 px-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Play className="h-4 w-4" />
                   <span>
-                    {loading ? 'Starting...' : 
-                     connectionStatus !== 'connected' ? 'AI Backend Unavailable' : 
-                     'Begin Patient Interview'}
+                    {loading ? 'Starting...' :
+                      connectionStatus !== 'connected' ? 'AI Backend Unavailable' :
+                        'Begin Patient Interview'}
                   </span>
                 </Button>
               ) : (
@@ -561,11 +594,10 @@ export function AIDentalPatient() {
                       onClick={toggleListening}
                       disabled={loading || !microphoneSupported || connectionStatus !== 'connected'}
                       variant={isListening ? "default" : "outline"}
-                      className={`py-3 px-3 rounded-lg font-semibold transition-all duration-300 text-sm ${
-                        isListening
-                          ? 'bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white shadow-md'
+                      className={`py-3 px-3 rounded-lg font-semibold transition-all duration-300 text-sm ${isListening
+                          ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-md'
                           : 'border-2 border-teal-300 hover:border-teal-400 text-teal-700 hover:bg-teal-50'
-                      }`}
+                        }`}
                     >
                       {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                     </Button>
@@ -594,13 +626,14 @@ export function AIDentalPatient() {
                       value={currentQuestion}
                       onChange={(e) => setCurrentQuestion(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && sendQuestion(currentQuestion)}
-                      placeholder="Type your question here or use voice..."
-                      className="flex-1 px-3 py-2 border border-teal-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      placeholder={isListening ? "Listening..." : "Type your question here or use voice..."}
+                      disabled={isListening}
+                      className="flex-1 px-3 py-2 border border-teal-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     />
                     <Button
                       onClick={() => sendQuestion(currentQuestion)}
-                      disabled={!currentQuestion.trim() || loading}
-                      className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm"
+                      disabled={!currentQuestion.trim() || loading || isListening}
+                      className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm disabled:opacity-50"
                     >
                       Ask
                     </Button>
@@ -608,7 +641,10 @@ export function AIDentalPatient() {
 
                   <div className="text-center">
                     <p className="text-xs text-gray-600 animate-fade-in leading-relaxed">
-                      Ask about medical history, current symptoms, pain levels, and dental concerns
+                      {isListening
+                        ? "🎤 Listening... Speak your question now"
+                        : "Ask about medical history, current symptoms, pain levels, and dental concerns"
+                      }
                     </p>
                     {connectionStatus !== 'connected' && (
                       <p className="text-xs text-amber-600 mt-1">
@@ -629,7 +665,7 @@ export function AIDentalPatient() {
             {conversationStarted && sessionStatus && (
               <div className="mt-4">
                 <div className="h-1 bg-teal-100 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-gradient-to-r from-teal-400 via-cyan-400 to-blue-400 rounded-full transition-all duration-300"
                     style={{ width: `${((sessionStatus.current_question_index) / sessionStatus.total_questions) * 100}%` }}
                   ></div>

@@ -1,6 +1,5 @@
-
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Textarea } from "@/components/ui/textarea";
 
 interface YesNoWithDetailsProps {
@@ -22,7 +21,17 @@ export const YesNoWithDetails = ({
 }: YesNoWithDetailsProps) => {
   const [showDetails, setShowDetails] = useState(value.answer === "yes");
 
+  // Add debugging
+  console.log(`YesNoWithDetails ${id}: value =`, value);
+
+  // Sync showDetails with the value prop
+  useEffect(() => {
+    setShowDetails(value.answer === "yes");
+  }, [value.answer]);
+
   const handleAnswerChange = (answer: string) => {
+    console.log(`YesNoWithDetails ${id}: changing answer to "${answer}"`);
+    
     const newShowDetails = answer === "yes";
     setShowDetails(newShowDetails);
     
@@ -35,6 +44,7 @@ export const YesNoWithDetails = ({
   };
 
   const handleDetailsChange = (details: string) => {
+    console.log(`YesNoWithDetails ${id}: changing details to "${details}"`);
     onChange?.({ ...value, details });
   };
 
@@ -47,7 +57,7 @@ export const YesNoWithDetails = ({
         <label className="flex items-center cursor-pointer group">
           <input
             type="radio"
-            name={id}
+            name={`yesnodetails-${id}`}
             value="yes"
             checked={value.answer === "yes"}
             onChange={() => handleAnswerChange("yes")}
@@ -58,7 +68,7 @@ export const YesNoWithDetails = ({
         <label className="flex items-center cursor-pointer group">
           <input
             type="radio"
-            name={id}
+            name={`yesnodetails-${id}`}
             value="no"
             checked={value.answer === "no"}
             onChange={() => handleAnswerChange("no")}

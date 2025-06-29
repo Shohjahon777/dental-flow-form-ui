@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -27,6 +26,15 @@ const RegisterPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!name || !email || !password) {
+      toast({
+        title: "Missing fields",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (password !== confirmPassword) {
       toast({
         title: "Password mismatch",
@@ -36,24 +44,41 @@ const RegisterPage = () => {
       return;
     }
 
-    setIsLoading(true);
-
-    const success = await register(name, email, password, role);
-    
-    if (success) {
+    if (password.length < 6) {
       toast({
-        title: "Account created!",
-        description: "Welcome to the Dental School Portal.",
-      });
-    } else {
-      toast({
-        title: "Registration failed",
-        description: "Please check your information and try again.",
+        title: "Password too short",
+        description: "Password must be at least 6 characters long.",
         variant: "destructive",
       });
+      return;
     }
-    
-    setIsLoading(false);
+
+    setIsLoading(true);
+
+    try {
+      const success = await register(name, email, password, role);
+      
+      if (success) {
+        toast({
+          title: "Account created!",
+          description: "Welcome to the Dental School Portal.",
+        });
+      } else {
+        toast({
+          title: "Registration failed",
+          description: "Please check your information and try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Connection error",
+        description: "Unable to connect to the server. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -80,6 +105,7 @@ const RegisterPage = () => {
                 onChange={(e) => setName(e.target.value)}
                 required
                 className="dental-input"
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
@@ -92,11 +118,16 @@ const RegisterPage = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 className="dental-input"
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
-              <Select value={role} onValueChange={(value: 'student' | 'instructor') => setRole(value)}>
+              <Select 
+                value={role} 
+                onValueChange={(value: 'student' | 'instructor') => setRole(value)}
+                disabled={isLoading}
+              >
                 <SelectTrigger className="dental-input">
                   <SelectValue placeholder="Select your role" />
                 </SelectTrigger>
@@ -111,11 +142,13 @@ const RegisterPage = () => {
               <Input
                 id="password"
                 type="password"
-                placeholder="Create a password"
+                placeholder="Create a password (min 6 characters)"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 className="dental-input"
+                disabled={isLoading}
+                minLength={6}
               />
             </div>
             <div className="space-y-2">
@@ -128,6 +161,7 @@ const RegisterPage = () => {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 className="dental-input"
+                disabled={isLoading}
               />
             </div>
             <Button 

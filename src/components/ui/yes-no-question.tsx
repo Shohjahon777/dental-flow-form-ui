@@ -1,4 +1,3 @@
-
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 
@@ -11,6 +10,9 @@ type YesNoQuestionProps = {
 };
 
 export function YesNoQuestion({ id, question, value = "", onChange, className = "" }: YesNoQuestionProps) {
+  // Add debugging to see what's happening
+  console.log(`YesNoQuestion ${id}: value = "${value}"`);
+  
   return (
     <div className={`space-y-3 ${className}`}>
       <Label className="text-sm font-medium text-gray-700 leading-relaxed">
@@ -18,7 +20,10 @@ export function YesNoQuestion({ id, question, value = "", onChange, className = 
       </Label>
       <RadioGroup 
         value={value} 
-        onValueChange={onChange}
+        onValueChange={(newValue) => {
+          console.log(`YesNoQuestion ${id}: changing from "${value}" to "${newValue}"`);
+          onChange?.(newValue);
+        }}
         className="flex space-x-6"
       >
         <div className="flex items-center space-x-2">

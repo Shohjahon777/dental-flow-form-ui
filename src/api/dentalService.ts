@@ -22,23 +22,11 @@ class DentalApiService {
   private websocketService: WebSocketService;
 
   constructor() {
-<<<<<<< HEAD
-    // Use environment variable or fallback to localhost
-    const apiUri = import.meta.env.VITE_AI_URI || 'https://backendfastapi-v8lv.onrender.com';
-    this.baseUrl = apiUri.replace('/api', ''); // Remove /api suffix if present
-    this.wsUrl = this.baseUrl.replace('http', 'ws');
-    
-    console.log('Dental API Service initialized:', {
-      baseUrl: this.baseUrl,
-      wsUrl: this.wsUrl
-    });
-=======
     this.patientService = new PatientService();
     this.sessionService = new SessionService();
     this.questionService = new QuestionService();
     this.healthService = new HealthService();
     this.websocketService = new WebSocketService();
->>>>>>> 48f5a9640ee1c7cf354ea7097041cf4fbc28d267
   }
 
   // Patient methods

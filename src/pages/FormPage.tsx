@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -13,6 +12,8 @@ import { paper1Questions, paper2Questions, sampleFormData, FormQuestion } from '
 import { Paper5FormData } from '@/data/paper5Questions';
 import { ArrowLeft, FileText, Save, Send, User, Heart, Menu, Stethoscope } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { submitFormData } from '../services/apiService';
+import { transformFormDataForApi } from '../utils/dataTransformer';
 
 const FormPage = () => {
   const { patientId } = useParams();
@@ -23,11 +24,38 @@ const FormPage = () => {
   const [currentPaper, setCurrentPaper] = useState<'paper1' | 'paper2' | 'paper3' | 'paper4' | 'paper5'>('paper1');
   const [isLoading, setIsLoading] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    console.log("=== FORMPAGE DEBUG ===");
+    console.log("Current URL:", window.location.href);
+    console.log("patientId from useParams:", patientId);
+    console.log("patientId type:", typeof patientId);
+    console.log("All localStorage keys:", Object.keys(localStorage));
+    console.log("Form-related localStorage keys:", 
+      Object.keys(localStorage).filter(key => key.includes('dentalApp_form_'))
+    );
+    console.log("=== END FORMPAGE DEBUG ===");
+  }, [patientId]);
 
   // Load sample data on component mount
   useEffect(() => {
-    setFormData(sampleFormData);
-  }, []);
+    if (patientId) {
+      // Only load saved data, do not use sample data
+      const savedData = localStorage.getItem(`dentalApp_form_${patientId}`);
+      if (savedData) {
+        try {
+          const parsedData = JSON.parse(savedData);
+          setFormData(parsedData);
+        } catch (error) {
+          console.error("Error parsing saved form data:", error);
+          setFormData({}); // fallback to empty
+        }
+      } else {
+        setFormData({}); // always start empty if no saved data
+      }
+    }
+  }, [patientId]);
 
   const getCurrentQuestions = () => {
     switch (currentPaper) {
@@ -57,15 +85,30 @@ const FormPage = () => {
   };
 
   const handleSave = async () => {
+    if (!patientId) {
+      toast({
+        title: "Error",
+        description: "Patient ID not found. Cannot save data.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      localStorage.setItem(`dentalApp_form_${patientId}`, JSON.stringify(formData));
+      const saveKey = `dentalApp_form_${patientId}`;
+      console.log("Saving data with key:", saveKey);
+      console.log("Saving data for patient:", patientId);
+      console.log("Data being saved:", formData);
+      
+      localStorage.setItem(saveKey, JSON.stringify(formData));
       
       toast({
         title: "Progress saved",
-        description: "Your form data has been saved successfully.",
+        description: `Form data saved successfully for ${patientId}.`,
       });
     } catch (error) {
+      console.error("Save error:", error);
       toast({
         title: "Save failed",
         description: "There was an error saving your progress. Please try again.",
@@ -76,45 +119,99 @@ const FormPage = () => {
     }
   };
 
-  const handleSubmit = async () => {
+  // Helper to map patientId to caseID
+  const getCaseIdForPatient = (id: string | undefined) => {
+    if (id === 'patient1') return 'case001';
+    if (id === 'patient2') return 'case002';
+    return id || 'unknown-case';
+  };
+
+  const handleSubmit = async (overrideFormData?: Record<string, any>) => {
+    if (!patientId) {
+      toast({
+        title: "Error",
+        description: "Patient ID not found. Cannot proceed.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
+      const saveKey = `dentalApp_form_${patientId}`;
+      const submittedKey = `dentalApp_submitted_${patientId}`;
+      const dataToSubmit = overrideFormData || formData;
+
       if (currentPaper === 'paper1') {
         setCurrentPaper('paper2');
+        localStorage.setItem(saveKey, JSON.stringify(formData));
         toast({
           title: "Paper 1 completed",
           description: "Moving to Paper 2 - Medical History.",
         });
       } else if (currentPaper === 'paper2') {
         setCurrentPaper('paper3');
+        localStorage.setItem(saveKey, JSON.stringify(formData));
         toast({
           title: "Paper 2 completed",
           description: "Moving to Paper 3 - Clinical Examination.",
         });
       } else if (currentPaper === 'paper3') {
         setCurrentPaper('paper4');
+        localStorage.setItem(saveKey, JSON.stringify(formData));
         toast({
           title: "Paper 3 completed",
           description: "Moving to Paper 4 - Investigations.",
         });
       } else if (currentPaper === 'paper4') {
         setCurrentPaper('paper5');
+        localStorage.setItem(saveKey, JSON.stringify(formData));
         toast({
           title: "Paper 4 completed",
           description: "Moving to Paper 5 - Final Diagnosis.",
         });
       } else {
-        localStorage.setItem(`dentalApp_form_${patientId}`, JSON.stringify(formData));
-        localStorage.setItem(`dentalApp_submitted_${patientId}`, 'true');
-        
-        toast({
-          title: "All forms completed!",
-          description: "Proceeding to review Clinical Findings & Investigations.",
-        });
-        
-        navigate(`/review/${patientId}`);
+        // Final submission - send to API
+        setIsSubmitting(true);
+        try {
+          localStorage.setItem(saveKey, JSON.stringify(dataToSubmit));
+
+          // Prepare data for API
+          const apiData = transformFormDataForApi(
+            dataToSubmit,
+            user?.name || 'Unknown Student', // studentID
+            getCaseIdForPatient(patientId)   // caseID
+          );
+
+          // Submit to API endpoint (proxy: /auth/submit-form)
+          const response = await submitFormData(apiData);
+          console.log("API Response:", response);
+
+          localStorage.setItem(submittedKey, 'true');
+
+          toast({
+            title: "All forms completed successfully!",
+            description: "Your data has been submitted to the server.",
+          });
+
+          navigate(`/review/${patientId}`);
+        } catch (error) {
+          console.error("API submission error:", error);
+          toast({
+            title: "Submission Error",
+            description: "Failed to submit to server, but data is saved locally. Please try again later.",
+            variant: "destructive"
+          });
+
+          // Still save locally and navigate even if API fails
+          localStorage.setItem(submittedKey, 'true');
+          navigate(`/review/${patientId}`);
+        } finally {
+          setIsSubmitting(false);
+        }
       }
     } catch (error) {
+      console.error("Submit error:", error);
       toast({
         title: "Submission failed",
         description: "There was an error submitting your forms. Please try again.",
@@ -126,8 +223,10 @@ const FormPage = () => {
   };
 
   const handlePaper5Submit = (data: Paper5FormData) => {
-    setFormData(prev => ({ ...prev, paper5: data }));
-    handleSubmit();
+    // Merge paper5 data and submit immediately
+    const updatedFormData = { ...formData, paper5: data };
+    setFormData(updatedFormData);
+    handleSubmit(updatedFormData);
   };
 
   const groupedQuestions = currentQuestions.reduce((acc, question) => {
@@ -159,6 +258,12 @@ const FormPage = () => {
     return Math.round((answeredQuestions / totalQuestions) * 100);
   };
 
+  const getPatientDisplayName = (id: string) => {
+    if (id === 'patient1') return 'Patient 1 (Sardor Osipov)';
+    if (id === 'patient2') return 'Patient 2 (Sarvar Karim)';
+    return `Patient ${id}`;
+  };
+
   const getPaperInfo = (paper: string) => {
     switch (paper) {
       case 'paper1': return { title: 'Dental History', icon: User, description: 'Patient dental background and history' };
@@ -169,6 +274,20 @@ const FormPage = () => {
       default: return { title: 'Unknown', icon: FileText, description: '' };
     }
   };
+
+  if (!patientId) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Invalid Patient</h2>
+          <p className="text-gray-600 mb-4">No patient ID found in the URL.</p>
+          <Button onClick={() => navigate('/patients')} className="dental-button-primary">
+            Back to Patient Selection
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
@@ -218,7 +337,7 @@ const FormPage = () => {
                     </>
                   )}
                 </h1>
-                <p className="text-xs text-gray-600">Patient {patientId?.slice(-1)} • {getCompletionPercentage()}% Complete</p>
+                <p className="text-xs text-gray-600">{getPatientDisplayName(patientId)} • {getCompletionPercentage()}% Complete</p>
               </div>
             </div>
             
@@ -253,7 +372,7 @@ const FormPage = () => {
                 {currentPaper === 'paper5' && 'Paper 5: Final Diagnosis'}
               </div>
               <div className="text-xs text-gray-600 mb-2">
-                Patient {patientId?.slice(-1)} • {getCompletionPercentage()}% Complete
+                {getPatientDisplayName(patientId)} • {getCompletionPercentage()}% Complete
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-gray-600">{user?.name}</span>
@@ -322,7 +441,7 @@ const FormPage = () => {
               </div>
               <div className="flex justify-between text-xs text-gray-500 mt-1">
                 <span>{getCompletionPercentage()}% Complete</span>
-                <span>Patient {patientId?.slice(-1)}</span>
+                <span>{getPatientDisplayName(patientId)}</span>
               </div>
             </div>
           </div>
@@ -480,12 +599,12 @@ const FormPage = () => {
                   )}
                   <Button 
                     onClick={handleSubmit} 
-                    disabled={isLoading}
+                    disabled={isLoading || isSubmitting}
                     size="sm"
                     className="dental-button-primary text-xs"
                   >
                     <Send className="w-3 h-3 mr-1" />
-                    {isLoading ? 'Processing...' : 
+                    {isLoading || isSubmitting ? 'Processing...' : 
                      currentPaper === 'paper1' ? 'Next: Paper 2' :
                      currentPaper === 'paper2' ? 'Next: Paper 3' :
                      currentPaper === 'paper3' ? 'Next: Paper 4' :
@@ -655,7 +774,7 @@ const FormPage = () => {
           
           <Button 
             onClick={handleSubmit} 
-            disabled={isLoading}
+            disabled={isLoading || isSubmitting}
             size="sm"
             className="dental-button-primary text-xs"
           >
