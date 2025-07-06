@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import {Calendar} from '@/components/ui/calendar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Search, Filter, FileText, Edit, Trash2, Copy, Eye, Calendar, FolderOpen } from 'lucide-react';
+import { Plus, Search, Filter, FileText, Edit, Trash2, Copy, Eye, FolderOpen } from 'lucide-react';
 import { FormTemplate, sampleFormTemplates } from '@/data/paper5Questions';
 
 interface FormTemplatesSectionProps {
@@ -287,6 +288,7 @@ export const FormTemplatesSection = ({ onTemplateSelect, isEditable = true }: Fo
           </div>
         )}
       </div>
+
     </div>
   );
 };
