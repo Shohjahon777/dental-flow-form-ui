@@ -11,8 +11,6 @@ import { ControlButtons } from "@/components/ui/control-buttons";
 import { QuestionInput } from "@/components/ui/question-input";
 import { dentalApiService, PatientInfo, SessionStatus } from "@/api/dentalService";
 import { toast } from "sonner";
-import { useVoiceRecognition } from "@/hooks/useVoiceRecognition";
-import { useWebSocket } from "@/hooks/useWebSocket";
 import { useParams } from "react-router-dom";
 
 interface WebSocketMessage {
@@ -45,57 +43,125 @@ export function AIDentalPatient() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
+  const [isListening, setIsListening] = useState(false);
+  const [microphoneSupported, setMicrophoneSupported] = useState(true);
 
   const processingVoiceRef = useRef(false);
+  const wsRef = useRef<WebSocket | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
   const { patientId } = useParams();
-
-  // WebSocket hook
-  const { connectionStatus, initializeWebSocket, sendMessage, cleanup: cleanupWebSocket } = useWebSocket({
-    onMessage: handleWebSocketMessage,
-    onConnectionChange: () => {} // Status is handled by the hook itself
-  });
-
-  // Voice recognition callbacks
-  const handleVoiceTranscription = useCallback(async (text: string) => {
-    if (!text.trim() || processingVoiceRef.current || !sessionActive) return;
-
-    processingVoiceRef.current = true;
-
-    try {
-      console.log('Voice transcription received:', text);
-      addToChat('Student (Voice)', text, 'question');
-      setCurrentQuestion(text);
-      await sendQuestion(text);
-    } catch (error) {
-      console.error('Error processing voice transcription:', error);
-    } finally {
-      processingVoiceRef.current = false;
-    }
-  }, [sessionActive]);
-
-  const handleVoiceError = useCallback((errorMsg: string) => {
-    setError(errorMsg);
-    toast.error(errorMsg);
-    processingVoiceRef.current = false;
-  }, []);
-
-  const {
-    isListening,
-    isSupported: microphoneSupported,
-    startListening,
-    stopListening,
-    cleanup: cleanupVoice
-  } = useVoiceRecognition({
-    onTranscription: handleVoiceTranscription,
-    onError: handleVoiceError
-  });
 
   useEffect(() => {
     testBackendConnection();
     loadPatients();
+    checkMicrophoneSupport();
     return () => {
       cleanup();
     };
+  }, []);
+
+  const checkMicrophoneSupport = () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setMicrophoneSupported(false);
+    }
+  };
+
+  const testBackendConnection = async () => {
+    try {
+      const isConnected = await dentalApiService.testConnection();
+      if (isConnected) {
+        setConnectionStatus('connected');
+        toast.success('Connected to AI backend');
+      } else {
+        setConnectionStatus('error');
+        setError('AI backend server is not available. Please check your connection.');
+        toast.error('AI backend connection failed');
+      }
+    } catch (err) {
+      setConnectionStatus('error');
+      setError('Cannot connect to AI backend server');
+      toast.error('AI backend connection failed');
+    }
+  };
+
+  const cleanup = () => {
+    if (wsRef.current) {
+      wsRef.current.close();
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+    if ('speechSynthesis' in window) {
+      speechSynthesis.cancel();
+    }
+    processingVoiceRef.current = false;
+    setIsListening(false);
+  };
+
+  const loadPatients = async () => {
+    try {
+      setLoading(true);
+      console.log('Loading patients...');
+      const patientsData = await dentalApiService.getPatients();
+      console.log('Patients loaded:', patientsData);
+      setPatients(patientsData);
+      if (patientsData.length > 0) {
+        setSelectedPatient(patientId || patientsData[0].id);
+      }
+    } catch (err) {
+      console.error('Error loading patients:', err);
+      setError('Failed to load patients from AI backend.');
+      toast.error('Failed to load patients');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const initializeWebSocket = useCallback((patientId: string) => {
+    try {
+      console.log('Initializing WebSocket for patient:', patientId);
+      const wsUrl = `wss://backendfastapi-v8lv.onrender.com/ws/${patientId}`;
+      console.log('WebSocket URL:', wsUrl);
+
+      wsRef.current = new WebSocket(wsUrl);
+
+      wsRef.current.onopen = () => {
+        console.log('WebSocket connected');
+        setConnectionStatus('connected');
+        toast.success('Voice AI connected');
+      };
+
+      wsRef.current.onmessage = (event) => {
+        try {
+          const data: WebSocketMessage = JSON.parse(event.data);
+          console.log('WebSocket message received:', data);
+          handleWebSocketMessage(data);
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      };
+
+      wsRef.current.onclose = () => {
+        console.log('WebSocket disconnected');
+        setConnectionStatus('disconnected');
+      };
+
+      wsRef.current.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        setConnectionStatus('error');
+      };
+
+    } catch (err) {
+      console.error('Failed to initialize WebSocket:', err);
+      setConnectionStatus('error');
+      toast.error('Voice AI connection failed');
+    }
   }, []);
 
   function handleWebSocketMessage(data: WebSocketMessage) {
@@ -134,48 +200,22 @@ export function AIDentalPatient() {
     }
   }
 
-  const testBackendConnection = async () => {
-    try {
-      const isConnected = await dentalApiService.testConnection();
-      if (!isConnected) {
-        setError('AI backend server is not available. Please check your connection.');
-        toast.error('AI backend connection failed');
-      } else {
-        toast.success('Connected to AI backend');
-      }
-    } catch (err) {
-      setError('Cannot connect to AI backend server');
-      toast.error('AI backend connection failed');
-    }
-  };
+  const handleVoiceTranscription = useCallback(async (text: string) => {
+    if (!text.trim() || processingVoiceRef.current || !sessionActive) return;
 
-  const cleanup = () => {
-    cleanupWebSocket();
-    cleanupVoice();
-    if ('speechSynthesis' in window) {
-      speechSynthesis.cancel();
-    }
-    processingVoiceRef.current = false;
-  };
+    processingVoiceRef.current = true;
 
-  const loadPatients = async () => {
     try {
-      setLoading(true);
-      console.log('Loading patients...');
-      const patientsData = await dentalApiService.getPatients();
-      console.log('Patients loaded:', patientsData);
-      setPatients(patientsData);
-      if (patientsData.length > 0) {
-        setSelectedPatient(patientId || patientsData[0].id);
-      }
-    } catch (err) {
-      console.error('Error loading patients:', err);
-      setError('Failed to load patients from AI backend.');
-      toast.error('Failed to load patients');
+      console.log('Voice transcription received:', text);
+      addToChat('Student (Voice)', text, 'question');
+      setCurrentQuestion(text);
+      await sendQuestion(text);
+    } catch (error) {
+      console.error('Error processing voice transcription:', error);
     } finally {
-      setLoading(false);
+      processingVoiceRef.current = false;
     }
-  };
+  }, [sessionActive]);
 
   const addToChat = (sender: string, message: string, type: string) => {
     setChatMessages(prev => [...prev, { sender, message, type }]);
@@ -239,6 +279,14 @@ export function AIDentalPatient() {
     }
   };
 
+  const sendMessage = (message: any) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(message));
+      return true;
+    }
+    return false;
+  };
+
   const sendQuestion = async (questionText: string) => {
     if (!questionText.trim() || !selectedPatient || !sessionActive) return;
 
@@ -283,13 +331,91 @@ export function AIDentalPatient() {
     }
   };
 
+  const startListening = async () => {
+    if (!microphoneSupported) {
+      toast.error('Speech recognition not supported in this browser');
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          sampleRate: 16000,
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+
+      streamRef.current = stream;
+      const mimeType = 'audio/webm;codecs=opus';
+      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType });
+      audioChunksRef.current = [];
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorderRef.current.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        await sendAudioToServer(audioBlob);
+        
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
+      };
+
+      mediaRecorderRef.current.start();
+      setIsListening(true);
+
+    } catch (error) {
+      console.error('Failed to start voice recognition:', error);
+      toast.error('Failed to access microphone');
+      setMicrophoneSupported(false);
+    }
+  };
+
+  const stopListening = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsListening(false);
+  };
+
+  const sendAudioToServer = async (audioBlob: Blob) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      toast.error('Voice connection lost. Please try again.');
+      return;
+    }
+
+    try {
+      const reader = new FileReader();
+      reader.onload = function() {
+        const base64Audio = (reader.result as string).split(',')[1];
+        const message = {
+          type: 'audio',
+          data: base64Audio
+        };
+        wsRef.current?.send(JSON.stringify(message));
+      };
+      reader.readAsDataURL(audioBlob);
+    } catch (error) {
+      console.error('Error sending audio:', error);
+      toast.error('Error sending audio');
+    }
+  };
+
   const toggleListening = () => {
     if (isListening) {
       stopListening();
     } else {
       if (sessionActive && connectionStatus === 'connected') {
         setCurrentQuestion('');
-        startListening(selectedPatient);
+        startListening();
       } else {
         toast.error('Please start a session first and ensure AI backend is connected');
       }
@@ -466,14 +592,12 @@ export function AIDentalPatient() {
               {!conversationStarted ? (
                 <Button
                   onClick={handleStartConversation}
-                  disabled={loading || connectionStatus !== 'connected'}
+                  disabled={loading}
                   className="w-full bg-gradient-to-r from-teal-600 via-teal-700 to-cyan-600 hover:from-teal-700 hover:via-teal-800 hover:to-cyan-700 text-white font-semibold py-3 px-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Play className="h-4 w-4" />
                   <span>
-                    {loading ? 'Starting...' :
-                      connectionStatus !== 'connected' ? 'AI Backend Unavailable' :
-                        'Begin Patient Interview'}
+                    {loading ? 'Starting...' : 'Begin Patient Interview'}
                   </span>
                 </Button>
               ) : (
