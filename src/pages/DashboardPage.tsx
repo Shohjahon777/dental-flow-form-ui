@@ -16,7 +16,7 @@ const DashboardPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-indigo-50">
       <GuidelinesButton />
-      
+
       <OnboardingTour
         isVisible={showTour}
         onComplete={completeTour}
@@ -81,43 +81,43 @@ const DashboardPage = () => {
             </Card>
           </Link>
 
-          <Link to="/history" className="h-full" data-tour="history">
-            <Card className="h-full hover:shadow-lg transition-all duration-200 border-0 shadow-md cursor-pointer group">
+          <div className="h-full" data-tour="history">
+            <Card className="h-full transition-all duration-200 border-0 shadow-md cursor-not-allowed opacity-75">
               <CardHeader className="text-center pb-4 flex-grow">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <History className="w-8 h-8 text-blue-600" />
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <History className="w-8 h-8 text-gray-400" />
                 </div>
-                <CardTitle className="text-xl text-gray-900">Assessment History</CardTitle>
-                <CardDescription className="text-gray-600">
+                <CardTitle className="text-xl text-gray-500">Assessment History</CardTitle>
+                <CardDescription className="text-gray-400">
                   History of patient assessments and submissions
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
-                <Button className="w-full bg-primary hover:bg-primary/90">
-                  View History
+                <Button disabled className="w-full bg-gray-300 text-gray-500 cursor-not-allowed">
+                  Coming Soon...
                 </Button>
               </CardContent>
             </Card>
-          </Link>
+          </div>
 
-          <Link to="/template" className="h-full" data-tour="templates">
-            <Card className="h-full hover:shadow-lg transition-all duration-200 border-0 shadow-md cursor-pointer group">
+          <div className="h-full" data-tour="templates">
+            <Card className="h-full transition-all duration-200 border-0 shadow-md cursor-not-allowed opacity-75">
               <CardHeader className="text-center pb-4 flex-grow">
-                <div className="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FileText className="w-8 h-8 text-teal-600" />
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FileText className="w-8 h-8 text-gray-400" />
                 </div>
-                <CardTitle className="text-xl text-gray-900">Form Templates</CardTitle>
-                <CardDescription className="text-gray-600">
+                <CardTitle className="text-xl text-gray-500">Form Templates</CardTitle>
+                <CardDescription className="text-gray-400">
                   View and review form templates for Papers 1-4
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
-                <Button className="w-full bg-primary hover:bg-primary/90">
-                  View Templates
+                <Button disabled className="w-full bg-gray-300 text-gray-500 cursor-not-allowed">
+                  Coming Soon...
                 </Button>
               </CardContent>
             </Card>
-          </Link>
+          </div>
         </div>
 
         {/* Quick Start Guide */}

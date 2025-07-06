@@ -91,6 +91,8 @@ export function AIDentalPatient() {
       setConnectionStatus('connecting');
       const isConnected = await dentalApiService.testConnection();
       setConnectionStatus(isConnected ? 'connected' : 'error');
+      console.log('Connection status', isConnected)
+      toast.success(`Connection status ${isConnected}`);
 
       if (!isConnected) {
         setError('AI backend server is not available. Please check your connection.');
