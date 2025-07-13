@@ -25,6 +25,7 @@ export function YesNoQuestion({ id, question, value = "", onChange, className = 
           onChange?.(newValue);
         }}
         className="flex space-x-6"
+        name={id} // Add unique name for each question group
       >
         <div className="flex items-center space-x-2">
           <RadioGroupItem 
