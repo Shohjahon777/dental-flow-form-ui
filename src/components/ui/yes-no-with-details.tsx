@@ -21,9 +21,6 @@ export const YesNoWithDetails = ({
 }: YesNoWithDetailsProps) => {
   const [showDetails, setShowDetails] = useState(value.answer === "yes");
 
-  // Add debugging
-  console.log(`YesNoWithDetails ${id}: value =`, value);
-
   // Sync showDetails with the value prop
   useEffect(() => {
     setShowDetails(value.answer === "yes");
@@ -40,12 +37,16 @@ export const YesNoWithDetails = ({
       details: newShowDetails ? value.details : ""
     };
     
-    onChange?.(newValue);
+    if (onChange) {
+      onChange(newValue);
+    }
   };
 
   const handleDetailsChange = (details: string) => {
     console.log(`YesNoWithDetails ${id}: changing details to "${details}"`);
-    onChange?.({ ...value, details });
+    if (onChange) {
+      onChange({ ...value, details });
+    }
   };
 
   return (

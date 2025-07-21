@@ -1,5 +1,6 @@
 
 import { useState, useRef, useCallback } from 'react';
+import { WebSocketService } from '../services/websocket';
 
 interface VoiceRecognitionOptions {
   onTranscription?: (text: string) => void;
@@ -15,6 +16,7 @@ export const useVoiceRecognition = (options: VoiceRecognitionOptions = {}) => {
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const websocketRef = useRef<WebSocket | null>(null);
+  const wsService = useRef(new WebSocketService('wss://backendfastapi-v8lv.onrender.com'));
 
   const {
     onTranscription,
@@ -25,36 +27,24 @@ export const useVoiceRecognition = (options: VoiceRecognitionOptions = {}) => {
 
   const connectWebSocket = useCallback((patientId: string) => {
     try {
-      // Use your deployed backend WebSocket URL
-      const wsUrl = `wss://backendfastapi-v8lv.onrender.com/ws/${patientId}`;
-      websocketRef.current = new WebSocket(wsUrl);
-      
-      websocketRef.current.onopen = () => {
-        console.log('WebSocket connected for voice recognition');
-      };
-      
-      websocketRef.current.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
+      websocketRef.current = wsService.current.connectWebSocket(
+        patientId,
+        (data) => {
           if (data.type === 'transcription' && data.text && onTranscription) {
             onTranscription(data.text);
           }
           if (data.type === 'error' && data.message && onError) {
             onError(data.message);
           }
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
+        },
+        (error) => {
+          console.error('WebSocket error:', error);
+          onError?.('WebSocket connection error');
+        },
+        () => {
+          console.log('WebSocket disconnected');
         }
-      };
-      
-      websocketRef.current.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        onError?.('WebSocket connection error');
-      };
-      
-      websocketRef.current.onclose = () => {
-        console.log('WebSocket disconnected');
-      };
+      );
     } catch (error) {
       console.error('Failed to connect WebSocket:', error);
       onError?.('Failed to connect to voice service');

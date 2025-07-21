@@ -1,3 +1,5 @@
+// Updated FormPage.tsx with proper question handling and debugging
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,9 +10,9 @@ import { AIDentalPatient } from '@/components/ui/ai-dental-patient';
 import { DraftNotes } from '@/components/ui/draft-notes';
 import { FormQuestionRenderer } from '@/components/FormQuestionRenderer';
 import { Paper5Form } from '@/components/forms/Paper5Form';
-import { paper1Questions, paper2Questions, sampleFormData, FormQuestion } from '@/data/formQuestions';
+import { paper1Questions, paper2Questions, FormQuestion } from '@/data/formQuestions';
 import { Paper5FormData } from '@/data/paper5Questions';
-import { ArrowLeft, FileText, Save, Send, User, Heart, Menu, Stethoscope } from 'lucide-react';
+import { ArrowLeft, FileText, Save, Send, User, Heart, Menu, Stethoscope, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { submitFormData } from '../services/apiService';
 import { transformFormDataForApi } from '../utils/dataTransformer';
@@ -25,6 +27,46 @@ const FormPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [questionVerification, setQuestionVerification] = useState<{paper1: number, paper2: number} | null>(null);
+
+  // Question verification on component mount
+  useEffect(() => {
+    const verification = {
+      paper1: paper1Questions.length,
+      paper2: paper2Questions.length
+    };
+    setQuestionVerification(verification);
+    
+    // Debug logging
+    console.log("=== FORM QUESTION VERIFICATION ===");
+    console.log(`Paper 1 Questions: ${verification.paper1}/27 expected`);
+    console.log(`Paper 2 Questions: ${verification.paper2}/57 expected`);
+    
+    // Check for question order issues
+    const paper1Issues = checkQuestionOrder(paper1Questions, 'Paper 1');
+    const paper2Issues = checkQuestionOrder(paper2Questions, 'Paper 2');
+    
+    if (paper1Issues.length > 0 || paper2Issues.length > 0) {
+      console.warn("Question order issues detected:", { paper1Issues, paper2Issues });
+    }
+    
+    console.log("=== END VERIFICATION ===");
+  }, []);
+
+  // Helper function to check question order
+  const checkQuestionOrder = (questions: FormQuestion[], paperName: string) => {
+    const issues: string[] = [];
+    questions.forEach((question, index) => {
+      const match = question.question.match(/^(\d+)\./);
+      const questionNumber = match ? parseInt(match[1]) : null;
+      const expectedNumber = index + 1;
+      
+      if (questionNumber !== expectedNumber) {
+        issues.push(`${paperName} Q${expectedNumber}: Expected Q${expectedNumber}, found Q${questionNumber}`);
+      }
+    });
+    return issues;
+  };
 
   useEffect(() => {
     console.log("=== FORMPAGE DEBUG ===");
@@ -38,33 +80,46 @@ const FormPage = () => {
     console.log("=== END FORMPAGE DEBUG ===");
   }, [patientId]);
 
-  // Load sample data on component mount
+  // Load saved data on component mount
   useEffect(() => {
     if (patientId) {
-      // Only load saved data, do not use sample data
       const savedData = localStorage.getItem(`dentalApp_form_${patientId}`);
       if (savedData) {
         try {
           const parsedData = JSON.parse(savedData);
           setFormData(parsedData);
+          console.log("Loaded saved form data:", parsedData);
         } catch (error) {
           console.error("Error parsing saved form data:", error);
-          setFormData({}); // fallback to empty
+          setFormData({});
         }
       } else {
-        setFormData({}); // always start empty if no saved data
+        setFormData({});
+        console.log("No saved data found, starting with empty form");
       }
     }
   }, [patientId]);
 
-  const getCurrentQuestions = () => {
+  const getCurrentQuestions = (): FormQuestion[] => {
     switch (currentPaper) {
-      case 'paper1': return paper1Questions;
-      case 'paper2': return paper2Questions;
-      case 'paper3': return [];
-      case 'paper4': return [];
-      case 'paper5': return [];
-      default: return paper1Questions;
+      case 'paper1': 
+        console.log(`Returning ${paper1Questions.length} questions for Paper 1`);
+        return paper1Questions;
+      case 'paper2': 
+        console.log(`Returning ${paper2Questions.length} questions for Paper 2`);
+        return paper2Questions;
+      case 'paper3': 
+        console.log("Paper 3 - Clinical Examination (no questions yet)");
+        return [];
+      case 'paper4': 
+        console.log("Paper 4 - Investigations (no questions yet)");
+        return [];
+      case 'paper5': 
+        console.log("Paper 5 - Final Diagnosis (custom form)");
+        return [];
+      default: 
+        console.log("Default: returning Paper 1 questions");
+        return paper1Questions;
     }
   };
 
@@ -78,10 +133,17 @@ const FormPage = () => {
   }[currentPaper];
 
   const handleInputChange = (questionId: string, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [questionId]: value
-    }));
+    console.log(`Question ${questionId} changed to:`, value);
+    
+    // Use functional state update to ensure we're working with the latest state
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        [questionId]: value
+      };
+      console.log(`Updated form data for ${questionId}:`, newData);
+      return newData;
+    });
   };
 
   const handleSave = async () => {
@@ -119,7 +181,6 @@ const FormPage = () => {
     }
   };
 
-  // Helper to map patientId to caseID
   const getCaseIdForPatient = (id: string | undefined) => {
     if (id === 'patient1') return 'case001';
     if (id === 'patient2') return 'case002';
@@ -171,19 +232,17 @@ const FormPage = () => {
           description: "Moving to Paper 5 - Final Diagnosis.",
         });
       } else {
-        // Final submission - send to API
+        // Final submission
         setIsSubmitting(true);
         try {
           localStorage.setItem(saveKey, JSON.stringify(dataToSubmit));
 
-          // Prepare data for API
           const apiData = transformFormDataForApi(
             dataToSubmit,
-            user?.name || 'Unknown Student', // studentID
-            getCaseIdForPatient(patientId)   // caseID
+            user?.name || 'Unknown Student',
+            getCaseIdForPatient(patientId)
           );
 
-          // Submit to API endpoint (proxy: /auth/submit-form)
           const response = await submitFormData(apiData);
           console.log("API Response:", response);
 
@@ -203,7 +262,6 @@ const FormPage = () => {
             variant: "destructive"
           });
 
-          // Still save locally and navigate even if API fails
           localStorage.setItem(submittedKey, 'true');
           navigate(`/review/${patientId}`);
         } finally {
@@ -223,12 +281,12 @@ const FormPage = () => {
   };
 
   const handlePaper5Submit = (data: Paper5FormData) => {
-    // Merge paper5 data and submit immediately
     const updatedFormData = { ...formData, paper5: data };
     setFormData(updatedFormData);
     handleSubmit(updatedFormData);
   };
 
+  // Group questions by section for better organization
   const groupedQuestions = currentQuestions.reduce((acc, question) => {
     if (!acc[question.section]) {
       acc[question.section] = [];
@@ -241,12 +299,14 @@ const FormPage = () => {
     if (currentPaper === 'paper5') {
       const paper5Data = formData.paper5 as Paper5FormData;
       if (!paper5Data) return 0;
-      const requiredFields = ['finalDiagnosis', 'diagnosisJustification', 'dateOfDiagnosis'];
+      const requiredFields = ['finalDiagnosis'];
       const completed = requiredFields.filter(field => paper5Data[field as keyof Paper5FormData]).length;
       return Math.round((completed / requiredFields.length) * 100);
     }
     
     const totalQuestions = currentQuestions.length;
+    if (totalQuestions === 0) return 0;
+    
     const answeredQuestions = currentQuestions.filter(q => {
       const value = formData[q.id];
       if (q.type === 'yes-no-details') {
@@ -258,7 +318,8 @@ const FormPage = () => {
     return Math.round((answeredQuestions / totalQuestions) * 100);
   };
 
-  const getPatientDisplayName = (id: string) => {
+  const getPatientDisplayName = (id: string | undefined) => {
+    if (!id) return 'Unknown Patient';
     if (id === 'patient1') return 'Patient 1 (Sardor Osipov)';
     if (id === 'patient2') return 'Patient 2 (Sarvar Karim)';
     return `Patient ${id}`;
@@ -269,8 +330,8 @@ const FormPage = () => {
       case 'paper1': return { title: 'Dental History', icon: User, description: 'Patient dental background and history' };
       case 'paper2': return { title: 'Medical History', icon: Heart, description: 'Medical conditions and medications' };
       case 'paper3': return { title: 'Clinical Examination', icon: Stethoscope, description: 'Physical examination findings' };
-      case 'paper4': return { title: 'Investigations', icon: FileText, description: 'Diagnostic tests and imaging' };
-      case 'paper5': return { title: 'Final Diagnosis', icon: Stethoscope, description: 'Diagnosis and treatment plan' };
+      case 'paper4': return { title: 'Investigations', icon: FileText, description: 'X-rays and additional tests' };
+      case 'paper5': return { title: 'Final Diagnosis', icon: FileText, description: 'Diagnosis and treatment plan' };
       default: return { title: 'Unknown', icon: FileText, description: '' };
     }
   };
@@ -443,6 +504,22 @@ const FormPage = () => {
                 <span>{getCompletionPercentage()}% Complete</span>
                 <span>{getPatientDisplayName(patientId)}</span>
               </div>
+              
+              {/* Question count indicator */}
+              {questionVerification && (currentPaper === 'paper1' || currentPaper === 'paper2') && (
+                <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded mt-2">
+                  <div className="flex items-center justify-between">
+                    <span>
+                      Questions loaded: {currentPaper === 'paper1' ? questionVerification.paper1 : questionVerification.paper2}
+                      /{currentPaper === 'paper1' ? '27' : '57'} expected
+                    </span>
+                    {((currentPaper === 'paper1' && questionVerification.paper1 !== 27) ||
+                      (currentPaper === 'paper2' && questionVerification.paper2 !== 57)) && (
+                      <AlertCircle className="w-4 h-4 text-orange-500" />
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -544,6 +621,9 @@ const FormPage = () => {
                     <CardTitle className="text-lg text-gray-900 flex items-center">
                       <div className="w-1 h-6 bg-gradient-to-b from-teal-500 to-cyan-500 rounded-full mr-2"></div>
                       {section}
+                      <span className="ml-auto text-xs text-gray-500 font-normal">
+                        {questions.length} question{questions.length !== 1 ? 's' : ''}
+                      </span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">

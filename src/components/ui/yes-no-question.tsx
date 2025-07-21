@@ -10,9 +10,13 @@ type YesNoQuestionProps = {
 };
 
 export function YesNoQuestion({ id, question, value = "", onChange, className = "" }: YesNoQuestionProps) {
-  // Add debugging to see what's happening
-  console.log(`YesNoQuestion ${id}: value = "${value}"`);
-  
+  const handleValueChange = (newValue: string) => {
+    console.log(`YesNoQuestion ${id}: changing from "${value}" to "${newValue}"`);
+    if (onChange) {
+      onChange(newValue);
+    }
+  };
+
   return (
     <div className={`space-y-3 ${className}`}>
       <Label className="text-sm font-medium text-gray-700 leading-relaxed">
@@ -20,12 +24,9 @@ export function YesNoQuestion({ id, question, value = "", onChange, className = 
       </Label>
       <RadioGroup 
         value={value} 
-        onValueChange={(newValue) => {
-          console.log(`YesNoQuestion ${id}: changing from "${value}" to "${newValue}"`);
-          onChange?.(newValue);
-        }}
+        onValueChange={handleValueChange}
         className="flex space-x-6"
-        name={id} // Add unique name for each question group
+        name={`radio-group-${id}`}
       >
         <div className="flex items-center space-x-2">
           <RadioGroupItem 

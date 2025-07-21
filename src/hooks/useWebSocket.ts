@@ -1,6 +1,7 @@
 
 import { useRef, useCallback, useState } from 'react';
 import { toast } from "sonner";
+import { WebSocketService } from '../services/websocket';
 
 interface WebSocketMessage {
   type: 'transcription' | 'answer' | 'error' | 'status';
@@ -20,6 +21,7 @@ interface UseWebSocketProps {
 export const useWebSocket = ({ onMessage, onConnectionChange }: UseWebSocketProps) => {
   const wsRef = useRef<WebSocket | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
+  const wsService = useRef(new WebSocketService('wss://backendfastapi-v8lv.onrender.com'));
 
   const updateConnectionStatus = useCallback((status: 'disconnected' | 'connecting' | 'connected' | 'error') => {
     setConnectionStatus(status);
@@ -30,35 +32,26 @@ export const useWebSocket = ({ onMessage, onConnectionChange }: UseWebSocketProp
     try {
       console.log('Initializing WebSocket for patient:', patientId);
 
-      const wsUrl = `wss://backendfastapi-v8lv.onrender.com/ws/${patientId}`;
-      console.log('WebSocket URL:', wsUrl);
-
-      wsRef.current = new WebSocket(wsUrl);
+      wsRef.current = wsService.current.connectWebSocket(
+        patientId,
+        (message) => {
+          console.log('WebSocket message received:', message);
+          onMessage(message);
+        },
+        (error) => {
+          console.error('WebSocket error:', error);
+          updateConnectionStatus('error');
+        },
+        (event) => {
+          console.log('WebSocket closed:', event);
+          updateConnectionStatus('disconnected');
+        }
+      );
 
       wsRef.current.onopen = () => {
         console.log('WebSocket connected');
         updateConnectionStatus('connected');
         toast.success('Voice AI connected');
-      };
-
-      wsRef.current.onmessage = (event) => {
-        try {
-          const data: WebSocketMessage = JSON.parse(event.data);
-          console.log('WebSocket message received:', data);
-          onMessage(data);
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
-        }
-      };
-
-      wsRef.current.onclose = () => {
-        console.log('WebSocket disconnected');
-        updateConnectionStatus('disconnected');
-      };
-
-      wsRef.current.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        updateConnectionStatus('error');
       };
 
     } catch (err) {

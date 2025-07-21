@@ -12,6 +12,8 @@ import { QuestionInput } from "@/components/ui/question-input";
 import { dentalApiService, PatientInfo, SessionStatus } from "@/api/dentalService";
 import { toast } from "sonner";
 import { useParams } from "react-router-dom";
+import { WebSocketService } from "@/services/websocket";
+
 
 interface WebSocketMessage {
   type: 'transcription' | 'answer' | 'error' | 'status';
@@ -52,6 +54,7 @@ export function AIDentalPatient() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const wsService = useRef(new WebSocketService('wss://backendfastapi-v8lv.onrender.com'));
   const { patientId } = useParams();
 
   useEffect(() => {
@@ -126,10 +129,35 @@ export function AIDentalPatient() {
   const initializeWebSocket = useCallback((patientId: string) => {
     try {
       console.log('Initializing WebSocket for patient:', patientId);
-      const wsUrl = `wss://backendfastapi-v8lv.onrender.com/ws/${patientId}`;
-      console.log('WebSocket URL:', wsUrl);
 
-      wsRef.current = new WebSocket(wsUrl);
+      // Optimize WebSocket connection with better error handling and reconnection
+      wsRef.current = wsService.current.connectWebSocket(
+        patientId,
+        (data) => {
+          console.log('WebSocket message received:', data);
+          handleWebSocketMessage(data);
+        },
+        (error) => {
+          console.error('WebSocket error:', error);
+          setConnectionStatus('error');
+          // Auto-reconnect on error
+          setTimeout(() => {
+            if (sessionActive) {
+              initializeWebSocket(patientId);
+            }
+          }, 2000);
+        },
+        (event) => {
+          console.log('WebSocket closed:', event);
+          setConnectionStatus('disconnected');
+          // Auto-reconnect on close
+          setTimeout(() => {
+            if (sessionActive) {
+              initializeWebSocket(patientId);
+            }
+          }, 1000);
+        }
+      );
 
       wsRef.current.onopen = () => {
         console.log('WebSocket connected');
@@ -137,32 +165,17 @@ export function AIDentalPatient() {
         toast.success('Voice AI connected');
       };
 
-      wsRef.current.onmessage = (event) => {
-        try {
-          const data: WebSocketMessage = JSON.parse(event.data);
-          console.log('WebSocket message received:', data);
-          handleWebSocketMessage(data);
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
-        }
-      };
-
-      wsRef.current.onclose = () => {
-        console.log('WebSocket disconnected');
-        setConnectionStatus('disconnected');
-      };
-
-      wsRef.current.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        setConnectionStatus('error');
-      };
+      // Optimize WebSocket settings for better performance
+      if (wsRef.current) {
+        wsRef.current.binaryType = 'arraybuffer';
+      }
 
     } catch (err) {
       console.error('Failed to initialize WebSocket:', err);
       setConnectionStatus('error');
       toast.error('Voice AI connection failed');
     }
-  }, []);
+  }, [sessionActive]);
 
   function handleWebSocketMessage(data: WebSocketMessage) {
     console.log('Processing WebSocket message:', data);
@@ -294,8 +307,6 @@ export function AIDentalPatient() {
       setLoading(true);
       setError(null);
 
-      console.log('Sending question:', questionText);
-
       const isVoiceQuestion = chatMessages.some(msg =>
         msg.message === questionText && msg.sender.includes('Voice')
       );
@@ -409,6 +420,8 @@ export function AIDentalPatient() {
     }
   };
 
+
+
   const toggleListening = () => {
     if (isListening) {
       stopListening();
@@ -428,11 +441,65 @@ export function AIDentalPatient() {
       const utterance = new SpeechSynthesisUtterance(text);
 
       const voices = speechSynthesis.getVoices();
-      const preferredVoice = voices.find(voice =>
-        voice.name.includes('Neural') ||
-        voice.name.includes('Premium') ||
-        voice.lang.includes('en')
-      );
+      
+      // Get the selected patient's gender
+      const patientGender = selectedPatientInfo?.gender?.toLowerCase() || 'male';
+      
+      // Select voice based on patient gender
+      let preferredVoice = null;
+      
+      if (patientGender === 'male') {
+        // Look for male voices first
+        preferredVoice = voices.find(voice =>
+          (voice.name.toLowerCase().includes('male') || 
+           voice.name.toLowerCase().includes('david') ||
+           voice.name.toLowerCase().includes('james') ||
+           voice.name.toLowerCase().includes('john') ||
+           voice.name.toLowerCase().includes('mike') ||
+           voice.name.toLowerCase().includes('paul') ||
+           voice.name.toLowerCase().includes('steve') ||
+           voice.name.toLowerCase().includes('tom')) &&
+          voice.lang.includes('en')
+        );
+        
+        // Fallback to any English voice if no male voice found
+        if (!preferredVoice) {
+          preferredVoice = voices.find(voice =>
+            voice.lang.includes('en') &&
+            !voice.name.toLowerCase().includes('female') &&
+            !voice.name.toLowerCase().includes('sarah') &&
+            !voice.name.toLowerCase().includes('emma') &&
+            !voice.name.toLowerCase().includes('lisa') &&
+            !voice.name.toLowerCase().includes('anna') &&
+            !voice.name.toLowerCase().includes('mary')
+          );
+        }
+      } else {
+        // Look for female voices
+        preferredVoice = voices.find(voice =>
+          (voice.name.toLowerCase().includes('female') || 
+           voice.name.toLowerCase().includes('sarah') ||
+           voice.name.toLowerCase().includes('emma') ||
+           voice.name.toLowerCase().includes('lisa') ||
+           voice.name.toLowerCase().includes('anna') ||
+           voice.name.toLowerCase().includes('mary') ||
+           voice.name.toLowerCase().includes('jane')) &&
+          voice.lang.includes('en')
+        );
+        
+        // Fallback to any English voice if no female voice found
+        if (!preferredVoice) {
+          preferredVoice = voices.find(voice =>
+            voice.lang.includes('en')
+          );
+        }
+      }
+      
+      // Final fallback to any available voice
+      if (!preferredVoice && voices.length > 0) {
+        preferredVoice = voices[0];
+      }
+      
       if (preferredVoice) {
         utterance.voice = preferredVoice;
       }
@@ -487,6 +554,8 @@ export function AIDentalPatient() {
   };
 
   const selectedPatientInfo = patients.find(p => p.id === selectedPatient);
+
+
 
   return (
     <div className="flex justify-center items-center min-h-[60vh] p-6">
@@ -613,6 +682,8 @@ export function AIDentalPatient() {
                     onTogglePlayback={togglePlayback}
                     onReset={resetSession}
                   />
+
+
 
                   <QuestionInput
                     value={currentQuestion}
