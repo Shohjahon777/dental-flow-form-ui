@@ -21,7 +21,7 @@ interface UseWebSocketProps {
 export const useWebSocket = ({ onMessage, onConnectionChange }: UseWebSocketProps) => {
   const wsRef = useRef<WebSocket | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
-  const wsService = useRef(new WebSocketService('wss://backendfastapi-v8lv.onrender.com'));
+  const wsService = useRef(new WebSocketService('ws://13.60.204.2:8000'));
 
   const updateConnectionStatus = useCallback((status: 'disconnected' | 'connecting' | 'connected' | 'error') => {
     setConnectionStatus(status);

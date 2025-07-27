@@ -7,7 +7,7 @@ export class ApiClient {
     // Use relative URL for API calls to leverage Vite proxy
     this.baseUrl = '/api';
     // Keep WebSocket URL as absolute for direct connection
-    this.wsUrl = 'wss://backendfastapi-v8lv.onrender.com';
+    this.wsUrl = 'ws://13.60.204.2:8000';
     
     console.log('API Client initialized:', {
       baseUrl: this.baseUrl,

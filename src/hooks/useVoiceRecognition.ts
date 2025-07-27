@@ -16,7 +16,7 @@ export const useVoiceRecognition = (options: VoiceRecognitionOptions = {}) => {
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const websocketRef = useRef<WebSocket | null>(null);
-  const wsService = useRef(new WebSocketService('wss://backendfastapi-v8lv.onrender.com'));
+  const wsService = useRef(new WebSocketService('ws://13.60.204.2:8000'));
 
   const {
     onTranscription,

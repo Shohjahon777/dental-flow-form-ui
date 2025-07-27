@@ -7,12 +7,12 @@ import path from "path";
 export default defineConfig(({ mode }) => ({
   server: {
     host: true,
-    port: 8000,
+    port: 8080,
     proxy: {
       '/api': {
-        target: 'https://backendfastapi-v8lv.onrender.com',
+        target: 'http://13.60.204.2:8000',
         changeOrigin: true,
-        secure: true,
+        secure: false,
         configure: (proxy, options) => {
           proxy.on('proxyReq', (proxyReq, req, res) => {
             // Add CORS headers
