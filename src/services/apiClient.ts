@@ -4,14 +4,16 @@ export class ApiClient {
   protected wsUrl: string;
 
   constructor() {
-    // Use relative URL for API calls to leverage Vite proxy
+    // Use relative URL for API calls - Vite proxy handles dev, Vercel proxy handles prod
     this.baseUrl = '/api';
+    
     // Keep WebSocket URL as absolute for direct connection
     this.wsUrl = 'ws://13.60.204.2:8000';
     
     console.log('API Client initialized:', {
       baseUrl: this.baseUrl,
-      wsUrl: this.wsUrl
+      wsUrl: this.wsUrl,
+      isProduction: import.meta.env.PROD
     });
   }
 
@@ -36,6 +38,14 @@ export class ApiClient {
       
       console.log(`Response status: ${response.status}`);
       console.log(`Response headers:`, Object.fromEntries(response.headers.entries()));
+      
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Non-JSON response received:', text.substring(0, 200));
+        throw new Error(`Expected JSON response but got ${contentType || 'unknown content type'}`);
+      }
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));

@@ -7,7 +7,7 @@ import path from "path";
 export default defineConfig(({ mode }) => ({
   server: {
     host: true,
-    port: 8080,
+    port: 3000, // Changed from 8000 to avoid conflict with backend
     proxy: {
       '/api': {
         target: 'http://13.60.204.2:8000',
@@ -15,10 +15,19 @@ export default defineConfig(({ mode }) => ({
         secure: false,
         configure: (proxy, options) => {
           proxy.on('proxyReq', (proxyReq, req, res) => {
+            console.log(`Proxying ${req.method} ${req.url} to ${options.target}${req.url}`);
             // Add CORS headers
             proxyReq.setHeader('Access-Control-Allow-Origin', '*');
             proxyReq.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
             proxyReq.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+          });
+          
+          proxy.on('proxyRes', (proxyRes, req, res) => {
+            console.log(`Received response from backend: ${proxyRes.statusCode} for ${req.url}`);
+          });
+          
+          proxy.on('error', (err, req, res) => {
+            console.error('Proxy error:', err);
           });
         },
       },
