@@ -561,6 +561,63 @@ const FormPage = () => {
                         }
                       </p>
                     </div>
+                    
+                    {/* Examination Findings Text */}
+                    <div className="mt-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      <h5 className="font-semibold text-gray-900 mb-3">Examination Findings</h5>
+                      {patientId === "patient2" ? (
+                        <div className="space-y-4 text-sm text-gray-700">
+                          <div>
+                            <h6 className="font-medium text-gray-900 mb-2">Extraoral Examination</h6>
+                            <p>His extra-oral examination was unremarkable: skin, head, neck, temporomandibular joint, and muscles were all within normal limits.</p>
+                          </div>
+                          
+                          <div>
+                            <h6 className="font-medium text-gray-900 mb-2">Intraoral Examination</h6>
+                            <p>The oral cancer screen was negative. His gingiva was pink, firm, with pointed papillae on the buccal aspect (Figure 1). The lingual and palatal aspects, though, presented with signs of inflammation, with erythematous and edematous gingival margins.</p>
+                            <p className="mt-2">Adequate amounts of attached tissue were present around most teeth. Gingival recession was present at several sites (see periodontal chart for details). Supra- and subgingival calculus could be detected on several tooth surfaces, particularly on the buccal surface of upper molars and lingual surfaces of lower incisors. There was generalized plaque accumulation. Saliva was of normal flow and consistency.</p>
+                          </div>
+                          
+                          <div>
+                            <h6 className="font-medium text-gray-900 mb-2">Periodontal Chart</h6>
+                            <p>The periodontal chart presented in Figure 2 includes the following periodontal parameters:</p>
+                            <ol className="list-decimal list-inside mt-2 space-y-1">
+                              <li>Probing pocket depth (PD) in millimeters</li>
+                              <li>Measurement from the cementoenamel junction (CEJ) to the gingival margin (GM) in millimeters (gingival recession was recorded as a negative value)</li>
+                              <li>Clinical attachment level (CAL), which was calculated by subtracting the CEJ-GM distance from the PD</li>
+                              <li>Presence (1) or absence (0) of bleeding on probing (BOP)</li>
+                            </ol>
+                            <p className="mt-2">Each clinical parameter was measured at six sites per tooth excluding third molars. Probing values were colored in blue, green, or red to highlight:</p>
+                            <ul className="list-disc list-inside mt-1 space-y-1">
+                              <li>Shallow (&lt;4 mm)</li>
+                              <li>Intermediate (4–6 mm)</li>
+                              <li>Deep pockets (&gt;6 mm)</li>
+                            </ul>
+                            <p className="mt-2">Bleeding on probing was detected in 68% of sites, and the mean values for PD and CAL were 3.2 mm and 2.7 mm, respectively.</p>
+                          </div>
+                          
+                          <div>
+                            <h6 className="font-medium text-gray-900 mb-2">Occlusion</h6>
+                            <p>There were no signs of trauma from occlusion, no major occlusal discrepancies and interferences, and no significant mobility.</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4 text-sm text-gray-700">
+                          <div>
+                            <h6 className="font-medium text-gray-900 mb-2">Extraoral Examination</h6>
+                            <p>No significant findings. The patient had no masses or swelling, and the temporomandibular joint was within normal limits.</p>
+                          </div>
+                          
+                          <div>
+                            <h6 className="font-medium text-gray-900 mb-2">Intraoral Examination</h6>
+                            <ul className="list-disc list-inside space-y-1">
+                              <li>The soft tissues of the mouth (except gingiva) including the tongue appeared normal.</li>
+                              <li>A gingival examination revealed a mild marginal erythema, with rolled margins and swollen papillae (Figures 1–3).</li>
+                            </ul>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
@@ -610,6 +667,20 @@ const FormPage = () => {
                         }
                       </p>
                     </div>
+                    
+                    {/* Radiographic Findings Text - Only for patient2 */}
+                    {patientId === "patient2" && (
+                      <div className="mt-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <h5 className="font-semibold text-gray-900 mb-3">Radiographic Examination</h5>
+                        <div className="text-sm text-gray-700 space-y-2">
+                          <p>A full mouth set of radiographs (Figure 3) was exposed. There was generalized moderate to severe horizontal bone loss.</p>
+                          <p>There was furcation involvement seen in teeth #1, 2, 3, 14, 15, 16, 18, 19, and 30.</p>
+                          <p>There was a periapical radiolucency noted on tooth #5.</p>
+                          <p>There were root canal treatments seen on teeth #5/12.</p>
+                          <p>There were several amalgam restorations and recurrent decay noted on tooth #13.</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
