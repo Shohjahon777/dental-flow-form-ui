@@ -543,7 +543,7 @@ const FormPage = () => {
                   <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
                     <h4 className="font-semibold text-gray-900 mb-3 text-base">Clinical Images for Assessment</h4>
                     <img 
-                      src="/lovable-uploads/6064503a-3074-4027-8c65-bbc4af88cc05.png" 
+                      src={patientId === "patient2" ? "/lovable-uploads/paper3-patient2-mouth.png" : "/lovable-uploads/6064503a-3074-4027-8c65-bbc4af88cc05.png"}
                       alt="Clinical preoperative presentation showing dental conditions"
                       className="w-full max-w-2xl mx-auto rounded-lg shadow-sm border border-gray-100"
                     />
@@ -585,7 +585,7 @@ const FormPage = () => {
                   <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
                     <h4 className="font-semibold text-gray-900 mb-3 text-base">Radiographic Images for Analysis</h4>
                     <img 
-                      src="/lovable-uploads/71a16a32-2394-4a25-9b8e-c0c9aa73b174.png" 
+                      src={patientId === "patient2" ? "/lovable-uploads/paper4-patient2-xray.png" : "/lovable-uploads/71a16a32-2394-4a25-9b8e-c0c9aa73b174.png"}
                       alt="Bite-wing radiographs showing interproximal bone levels"
                       className="w-full max-w-3xl mx-auto rounded-lg shadow-sm border border-gray-100"
                     />
@@ -756,7 +756,7 @@ const FormPage = () => {
               <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
                 <h4 className="font-semibold text-gray-900 mb-2 text-sm">Clinical Images</h4>
                 <img 
-                  src="/lovable-uploads/6064503a-3074-4027-8c65-bbc4af88cc05.png" 
+                  src={patientId === "patient2" ? "/lovable-uploads/paper3-patient2-mouth.png" : "/lovable-uploads/6064503a-3074-4027-8c65-bbc4af88cc05.png"}
                   alt="Clinical preoperative presentation"
                   className="w-full rounded-lg shadow-sm border border-gray-100"
                 />
@@ -791,7 +791,7 @@ const FormPage = () => {
               <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
                 <h4 className="font-semibold text-gray-900 mb-2 text-sm">Radiographic Images</h4>
                 <img 
-                  src="/lovable-uploads/71a16a32-2394-4a25-9b8e-c0c9aa73b174.png" 
+                  src={patientId === "patient2" ? "/lovable-uploads/paper4-patient2-xray.png" : "/lovable-uploads/71a16a32-2394-4a25-9b8e-c0c9aa73b174.png"}
                   alt="Bite-wing radiographs"
                   className="w-full rounded-lg shadow-sm border border-gray-100"
                 />
