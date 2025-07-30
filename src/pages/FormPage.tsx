@@ -548,12 +548,17 @@ const FormPage = () => {
                       className="w-full max-w-2xl mx-auto rounded-lg shadow-sm border border-gray-100"
                     />
                     <p className="text-sm text-gray-600 mt-3 text-center font-medium">
-                      Preoperative clinical presentation showing dental alignment and gingival condition
+                      {patientId === "patient2" 
+                        ? "Clinical presentation showing anterior crown fracture and associated gingival trauma"
+                        : "Preoperative clinical presentation showing dental alignment and gingival condition"
+                      }
                     </p>
                     <div className="mt-4 p-3 bg-teal-50 rounded-lg border border-teal-200">
                       <p className="text-sm text-teal-800">
-                        💡 <strong>Assessment Tip:</strong> Examine this image carefully for signs of dental caries, 
-                        gingival inflammation, plaque accumulation, and tooth alignment issues.
+                        💡 <strong>Assessment Tip:</strong> {patientId === "patient2" 
+                          ? "Focus on the fractured central incisor, assess pulp vitality, examine surrounding soft tissues for trauma, and evaluate the extent of crown loss."
+                          : "Examine this image carefully for signs of dental caries, gingival inflammation, plaque accumulation, and tooth alignment issues."
+                        }
                       </p>
                     </div>
                   </div>
@@ -577,8 +582,10 @@ const FormPage = () => {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <p className="text-gray-600 text-sm">
-                    Analyze the radiographic images below to complete your diagnostic workup.
-                    These bite-wing radiographs will help you assess interproximal bone levels and identify any pathology.
+                    {patientId === "patient2" 
+                      ? "Analyze the periapical radiographs below to complete your diagnostic workup for the traumatic dental injury. These radiographs will help assess root integrity, pulp chamber, and surrounding bone structures."
+                      : "Analyze the radiographic images below to complete your diagnostic workup. These bite-wing radiographs will help you assess interproximal bone levels and identify any pathology."
+                    }
                   </p>
                   
                   {/* Radiographic Images Section */}
@@ -590,12 +597,17 @@ const FormPage = () => {
                       className="w-full max-w-3xl mx-auto rounded-lg shadow-sm border border-gray-100"
                     />
                     <p className="text-sm text-gray-600 mt-3 text-center font-medium">
-                      Bite-wing radiographs depicting the interproximal bone levels and dental structures
+                      {patientId === "patient2" 
+                        ? "Periapical radiographs showing root structure and surrounding bone after dental trauma"
+                        : "Bite-wing radiographs depicting the interproximal bone levels and dental structures"
+                      }
                     </p>
                     <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                       <p className="text-sm text-blue-800">
-                        🔍 <strong>Radiographic Analysis:</strong> Look for signs of caries, bone loss, 
-                        periodontal involvement, and any apical pathology in these radiographs.
+                        🔍 <strong>Radiographic Analysis:</strong> {patientId === "patient2" 
+                          ? "Examine root integrity, assess pulp chamber space, look for signs of root fracture, external root resorption, and evaluate surrounding bone for any traumatic changes."
+                          : "Look for signs of caries, bone loss, periodontal involvement, and any apical pathology in these radiographs."
+                        }
                       </p>
                     </div>
                   </div>
